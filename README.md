@@ -21,7 +21,7 @@ OpenJazzXB is a port of [OpenJazz](https://github.com/AlisterT/openjazz) — the
 - In-game pause menu (Start button)
 - Demo playback
 - Plasma menu backgrounds
-- Persistent configuration saved to `D:\openjazzxb.cfg`
+- Persistent configuration saved to `D:\xbjazz.cfg`
 
 ---
 
