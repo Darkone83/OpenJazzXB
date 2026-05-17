@@ -333,13 +333,14 @@ static int xbJoinGame() {
 		for (pfi = 0; pfi < 2; pfi++) {
 			int labelY = baseY + pfi * rowH;
 			int valueY = labelY + 12;
-			video.drawRect(8, labelY - 1, canvasW - 16, rowH, 0, true);
 			video.drawRect(8, labelY - 1, canvasW - 16, rowH, 79, false);
 			fontmn2->showString(pfLabels[pfi], 12, labelY);
 			fontbig->showString(pfVals[pfi], 20, valueY);
 		}
-		fontbig->showString("a=connect", 3, canvasH, alignX::Left, alignY::Bottom);
-		fontbig->showString("b=back", canvasW - 3, canvasH, alignX::Right, alignY::Bottom);
+		fontbig->showString("a=connect",
+			3, canvasH, alignX::Left, alignY::Bottom);
+		fontbig->showString("b=back",
+			canvasW - 3, canvasH, alignX::Right, alignY::Bottom);
 	}
 
 	/* ── DNS resolve ─────────────────────────────────────────────────────── */
@@ -466,23 +467,24 @@ static int xbJoinGame() {
 				fontmn2->showString("ROOM", canvasW >> 1, 8, alignX::Center);
 
 				/* Players -- top section */
+				/* Players -- two rows matching network setup style */
+				const int pRowH = 26;
+				const int pBaseY = 20;
 				int pi2;
 				for (pi2 = 0; pi2 < lobby.nPlayers && pi2 < 2; pi2++) {
-					int py = 22 + pi2 * 14;
-					video.drawRect(8, py - 1, canvasW - 16, 13, 0, true);
-					video.drawRect(8, py - 1, canvasW - 16, 13, 79, false);
-					fontbig->showString(pi2 == 0 ? "HOST" : "CLIENT",
-						12, py, alignX::Left);
-					fontmn2->showString(lobby.players[pi2],
-						canvasW >> 1, py, alignX::Center);
+					int labelY = pBaseY + pi2 * pRowH;
+					int valueY = labelY + 12;
+					video.drawRect(8, labelY - 1, canvasW - 16, pRowH, 79, false);
+					fontmn2->showString(pi2 == 0 ? "host" : "client", 12, labelY);
+					fontbig->showString(lobby.players[pi2], 20, valueY);
 				}
 
-				/* Divider */
-				video.drawRect(8, 52, canvasW - 16, 1, 79, true);
+				/* Divider below players */
+				video.drawRect(8, pBaseY + 2 * pRowH, canvasW - 16, 1, 79, true);
 
 				if (isHost) {
 					/* Level picker -- below player list */
-					const int pickY = 58;
+					const int pickY = 74;
 					char epStr[4] = { (char)('0' + episode),  '\0', '\0', '\0' };
 					char lvStr[4] = { (char)('0' + levelNum), '\0', '\0', '\0' };
 					const char* pickLabels[3] = { "episode", "level", "difficulty" };
@@ -512,20 +514,22 @@ static int xbJoinGame() {
 			fontmn2->showString("waiting...", canvasW >> 1, canvasH >> 1, alignX::Center);
 		}
 		else {
-			const int rowH2 = 16;
-			const int baseY2 = 22;
+			const int rowH2 = 26;
+			const int baseY2 = (canvasH >> 1) - 22 - (lobby.nRooms * rowH2 / 2);
 			int i;
 			for (i = 0; i < lobby.nRooms; i++) {
-				int itemY = baseY2 + i * rowH2;
-				if (i == chosen) video.drawRect(8, itemY - 1, canvasW - 16, rowH2 - 1, 79, false);
-				fontmn2->showString(lobby.rooms[i].hostName, 12, itemY);
+				int labelY = baseY2 + i * rowH2;
+				int valueY = labelY + 12;
+				video.drawRect(8, labelY - 1, canvasW - 16, rowH2, i == chosen ? 79 : 0, false);
+				fontmn2->showString(lobby.rooms[i].hostName, 12, labelY);
 				char cnt[4] = { (char)('0' + lobby.rooms[i].nPlayers), '/', (char)('0' + lobby.rooms[i].maxPlayers), '\0' };
-				fontbig->showString(cnt, canvasW >> 1, itemY);
-				fontbig->showString(lobby.rooms[i].status ? "busy" : "open", canvasW - 3, itemY, alignX::Right);
+				fontbig->showString(cnt, 12, valueY);
+				fontbig->showString(lobby.rooms[i].status ? "busy" : "open", canvasW - 3, valueY, alignX::Right);
 			}
 			int createY = baseY2 + lobby.nRooms * rowH2;
-			if (chosen == lobby.nRooms) video.drawRect(8, createY - 1, canvasW - 16, rowH2 - 1, 79, false);
-			fontmn2->showString(lobby.nRooms == 0 ? "no rooms  + new room" : "+ new room", 12, createY);
+			video.drawRect(8, createY - 1, canvasW - 16, rowH2, chosen == lobby.nRooms ? 79 : 0, false);
+			fontmn2->showString(lobby.nRooms == 0 ? "no rooms" : "", 12, createY);
+			fontbig->showString("+ new room", 12, createY + 12);
 		}
 		fontbig->showString("a=join  b=back", canvasW - 3, canvasH, alignX::Right, alignY::Bottom);
 	}

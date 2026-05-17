@@ -182,7 +182,7 @@ static int SendPkt(const unsigned char* buf, int len) {
         }
         sent += n;
     }
-    return 0;
+    return sent;   /* return bytes sent, not 0 */
 }
 
 /* Blocking receive of exactly n bytes */

@@ -12,7 +12,7 @@
 #define MAX_CLIENTS  32
 #define NET_ADDRESS  "127.0.0.1"
 #define NET_PORT     10052
-#define LEVEL_FILE   ""
+#define LEVEL_FILE   "openjazz.tmp"
 #define T_TIMEOUT    30000
 
 class Network {
