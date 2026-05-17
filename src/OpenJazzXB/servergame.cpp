@@ -104,6 +104,14 @@ void ServerGame::send(unsigned char* buffer) {
     }
 }
 
+/* Returns true if any client is still waiting for level data */
+bool ServerGame::levelDataPending() {
+    int count;
+    for (count = 0; count < MAX_CLIENTS; count++)
+        if (clientStatus[count] >= 0) return true;
+    return false;
+}
+
 int ServerGame::step(unsigned int ticks) {
     unsigned char sendBuffer[BUFFER_LENGTH];
     int count, pcount, length;

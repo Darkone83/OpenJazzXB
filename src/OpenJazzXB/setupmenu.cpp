@@ -465,32 +465,40 @@ static int xbJoinGame() {
 				roomPlasma.draw();
 				fontmn2->showString("ROOM", canvasW >> 1, 8, alignX::Center);
 
+				/* Players -- top section */
 				int pi2;
 				for (pi2 = 0; pi2 < lobby.nPlayers && pi2 < 2; pi2++) {
-					int py = 24 + pi2 * 14;
-					char sl[4] = { (char)('1' + pi2), '.', ' ', '\0' };
-					fontmn2->showString(sl, 12, py);
-					fontmn2->showString(lobby.players[pi2], 28, py);
-					if (pi2 == 0) fontbig->showString("host", canvasW - 3, py, alignX::Right);
+					int py = 22 + pi2 * 14;
+					video.drawRect(8, py - 1, canvasW - 16, 13, 0, true);
+					video.drawRect(8, py - 1, canvasW - 16, 13, 79, false);
+					fontbig->showString(pi2 == 0 ? "HOST" : "CLIENT",
+						12, py, alignX::Left);
+					fontmn2->showString(lobby.players[pi2],
+						canvasW >> 1, py, alignX::Center);
 				}
 
+				/* Divider */
+				video.drawRect(8, 52, canvasW - 16, 1, 79, true);
+
 				if (isHost) {
-					const int pickY = (canvasH >> 1) - 18;
+					/* Level picker -- below player list */
+					const int pickY = 58;
 					char epStr[4] = { (char)('0' + episode),  '\0', '\0', '\0' };
 					char lvStr[4] = { (char)('0' + levelNum), '\0', '\0', '\0' };
 					const char* pickLabels[3] = { "episode", "level", "difficulty" };
 					const char* pickVals[3] = { epStr, lvStr, diffNames[diffChoice] };
 					int ri;
 					for (ri = 0; ri < 3; ri++) {
-						int ry = pickY + ri * 16;
-						if (ri == pickRow) video.drawRect(8, ry - 1, canvasW - 16, 14, 79, false);
+						int ry = pickY + ri * 18;
+						if (ri == pickRow) video.drawRect(8, ry - 1, canvasW - 16, 16, 79, false);
 						fontmn2->showString(pickLabels[ri], 12, ry);
 						fontmn2->showString(pickVals[ri], canvasW - 3, ry, alignX::Right);
 					}
 					fontbig->showString("a=start game", 3, canvasH, alignX::Left, alignY::Bottom);
 				}
 				else {
-					fontmn2->showString("waiting for host...", canvasW >> 1, canvasH >> 1, alignX::Center);
+					fontmn2->showString("waiting for host...",
+						canvasW >> 1, (canvasH >> 1) + 10, alignX::Center);
 				}
 				fontbig->showString("b=leave", canvasW - 3, canvasH, alignX::Right, alignY::Bottom);
 			}
@@ -516,12 +524,8 @@ static int xbJoinGame() {
 				fontbig->showString(lobby.rooms[i].status ? "busy" : "open", canvasW - 3, itemY, alignX::Right);
 			}
 			int createY = baseY2 + lobby.nRooms * rowH2;
-			if (lobby.nRooms == 0) {
-				fontmn2->showString("no rooms", canvasW >> 1, createY, alignX::Center);
-				createY += rowH2;
-			}
 			if (chosen == lobby.nRooms) video.drawRect(8, createY - 1, canvasW - 16, rowH2 - 1, 79, false);
-			fontmn2->showString("+ new room", 12, createY);
+			fontmn2->showString(lobby.nRooms == 0 ? "no rooms  + new room" : "+ new room", 12, createY);
 		}
 		fontbig->showString("a=join  b=back", canvasW - 3, canvasH, alignX::Right, alignY::Bottom);
 	}

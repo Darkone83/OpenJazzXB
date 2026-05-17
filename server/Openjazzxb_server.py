@@ -312,15 +312,16 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 level_name = pkt[2:].decode("ascii", errors="replace").rstrip("\x00")
                 room.level_name = level_name
                 log.info(f"Room {room.room_id}: host picked level '{level_name}'")
-                # Send OJ handshake to ALL players now
+                # Send OJXB_MAPSEL to clients FIRST so they launch ClientGame
+                # before OJ handshake packets arrive in their buffer
+                for p in room.others(player):
+                    start_pkt = bytes([2 + len(pkt) - 2, OJXB_MAPSEL]) + pkt[2:]
+                    await send_packet(p.writer, start_pkt)
+                # THEN send OJ handshake to ALL players
                 for i, p in enumerate(room.players):
                     await send_packet(p.writer, build_props(room, i))
                     for j, q in enumerate(room.players):
                         await send_packet(p.writer, build_pjoin(q, j))
-                # Send OJXB_MAPSEL to all clients (not host)
-                for p in room.others(player):
-                    start_pkt = bytes([2 + len(pkt) - 2, OJXB_MAPSEL]) + pkt[2:]
-                    await send_packet(p.writer, start_pkt)
                 continue
 
             # Update player name if client sends its own PJOIN
