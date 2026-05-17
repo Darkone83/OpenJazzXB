@@ -541,39 +541,44 @@ void Font::showNumber(int n, int x, int y) {
 	}
 }
 
-/* Saved palette range for mapPalette/restorePalette */
+/* Saved atlas palette for mapPalette/restorePalette.
+ * We remap only the characterAtlas surface palette -- NEVER currentPalette.
+ * currentPalette is used by flip() for game rendering; touching it corrupts
+ * game colours (e.g. turns orange carrots grey). */
 static SDL_Color fontSavedPal[MAX_PALETTE_COLORS];
 static int fontSavedStart = -1;
 static int fontSavedLength = 0;
 
 void Font::mapPalette(int start, int length, int newStart, int newLength) {
-	if (!isOk) return;
-	/* Xbox: flip() expands canvas indices via currentPalette.
-	 * Take a full snapshot before remapping so reads and writes
-	 * never alias -- negative newLength walks backwards through palette. */
+	if (!isOk || !characterAtlas) return;
+	if (!characterAtlas->format || !characterAtlas->format->palette ||
+		!characterAtlas->format->palette->colors) return;
+	SDL_Color* cur = video.getPalette();  /* read-only source for remap values */
 	SDL_Color snap[MAX_PALETTE_COLORS];
-	SDL_Color* cur = video.getPalette();
 	int i;
 	memcpy(snap, cur, MAX_PALETTE_COLORS * sizeof(SDL_Color));
-	/* Save originals for restorePalette */
-	for (i = 0; i < length && (start + i) < MAX_PALETTE_COLORS; i++)
-		fontSavedPal[i] = snap[start + i];
+	/* Save current atlas palette then remap it -- read directly from surface */
+	memcpy(fontSavedPal, characterAtlas->format->palette->colors,
+		MAX_PALETTE_COLORS * sizeof(SDL_Color));
 	fontSavedStart = start;
 	fontSavedLength = length;
-	/* Apply remap from snapshot so aliasing is impossible */
+	/* Build remapped copy and apply to atlas surface only */
+	SDL_Color remapped[MAX_PALETTE_COLORS];
+	memcpy(remapped, characterAtlas->format->palette->colors,
+		MAX_PALETTE_COLORS * sizeof(SDL_Color));
 	for (i = 0; i < length && (start + i) < MAX_PALETTE_COLORS; i++) {
 		int srcIdx = (i * newLength / length) + newStart;
 		if (srcIdx >= 0 && srcIdx < MAX_PALETTE_COLORS)
-			cur[start + i] = snap[srcIdx];
+			remapped[start + i] = snap[srcIdx];
 	}
+	SDL_SetColors(characterAtlas, remapped, 0, MAX_PALETTE_COLORS);
 }
 
 void Font::restorePalette() {
-	if (!isOk) return;
-	/* Restore currentPalette entries saved by mapPalette */
-	SDL_Color* cur = video.getPalette();
-	for (int i = 0; i < fontSavedLength && (fontSavedStart + i) < MAX_PALETTE_COLORS; i++)
-		cur[fontSavedStart + i] = fontSavedPal[i];
+	if (!isOk || !characterAtlas || fontSavedStart < 0) return;
+	if (!characterAtlas->format || !characterAtlas->format->palette) return;
+	/* Restore atlas surface palette -- currentPalette is untouched */
+	SDL_SetColors(characterAtlas, fontSavedPal, 0, MAX_PALETTE_COLORS);
 	fontSavedStart = -1;
 }
 

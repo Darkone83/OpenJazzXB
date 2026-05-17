@@ -4,6 +4,7 @@
 
 #include "xb_config.h"
 #include "xb_input.h"
+#include <string.h>
 
 XbJazzConfig g_xbConfig;
 
@@ -21,4 +22,6 @@ void XbConfigDefaults(void) {
 	g_xbConfig.controls.btnJumpAlt = XB_BTN_RTRIG;
 	g_xbConfig.controls.btnChange = XB_BTN_Y;
 	g_xbConfig.controls.btnStats = XB_BTN_BLACK;
+	strncpy(g_xbConfig.playerName, "PLAYER", sizeof(g_xbConfig.playerName) - 1);
+	strncpy(g_xbConfig.serverAddr, "darkone83.myddns.me", sizeof(g_xbConfig.serverAddr) - 1);
 }
