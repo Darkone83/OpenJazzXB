@@ -1,7 +1,6 @@
 /**
  * network.h
- * XbJazz -- Network interface matching OJ's ClientGame/ServerGame expectations.
- * Implemented in network.cpp using RXDK sockets via xb_net.cpp.
+ * XbJazz port -- full stub. JJ1 singleplayer never enters network code.
  */
 
 #ifndef OJ_NETWORK_H
@@ -9,29 +8,30 @@
 
 #include "OpenJazz.h"
 
-#define MAX_CLIENTS  32
-#define NET_ADDRESS  "127.0.0.1"
-#define NET_PORT     10052
-#define LEVEL_FILE   "openjazz.tmp"
-#define T_TIMEOUT    30000
+ /* MAX_CLIENTS referenced by game.h */
+#define MAX_CLIENTS 32
+
+/* NET_ADDRESS default */
+#define NET_ADDRESS "127.0.0.1"
+
+/* LEVEL_FILE -- used by jj1levelload.cpp as a strcmp target to identify
+   network-provided level data.  Defined as an empty string so that any
+   strcmp against a real filename returns non-zero, safely skipping the
+   network code path in singleplayer. */
+#define LEVEL_FILE ""
 
 class Network {
 public:
-    Network();
-    ~Network();
-
-    int  host();
-    int  join(const char* address);
-    int  accept(int sock);
-    void close(int sock);
-    int  send(int sock, unsigned char* buffer);
-    int  recv(int sock, unsigned char* buffer, int length);
-    bool isConnected(int sock);
-    int  getError();
+    Network() {}
+    ~Network() {}
+    int  host(int) { return E_N_OTHER; }
+    int  join(const char*) { return E_N_OTHER; }
+    int  send(unsigned char*, int) { return E_N_OTHER; }
+    int  recv(unsigned char*, int) { return E_N_OTHER; }
+    void disconnect() {}
 };
 
-void XbNet_SetExpectedClients(int n);
 EXTERN Network* net;
 EXTERN char* netAddress;
 
-#endif
+#endif /* OJ_NETWORK_H */

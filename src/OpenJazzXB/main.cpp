@@ -85,10 +85,6 @@ void __cdecl main() {
 
     startUp(nullptr, 0, nullptr);
 
-    /* TODO: sync g_xbConfig.playerName -> setup.characterName
-     *       and g_xbConfig.serverAddr -> netAddress.
-     *       Deferred -- xb_config.h cannot be mixed with OJ headers. */
-
     LOG_INFO("XbJazz: entering play()");
     play();
 

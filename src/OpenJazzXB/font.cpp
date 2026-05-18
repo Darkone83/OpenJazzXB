@@ -444,7 +444,8 @@ Point Font::showString(const char* string, int x, int y,
 		if (string[i] == '\n') {
 			xOffset = xOffsetBase;
 			yOffset += lineHeight;
-		} else {
+		}
+		else {
 			unsigned int c = map[int(string[i])];
 			if (c == INVALID_FONT_CHAR) { xOffset += spaceWidth; continue; }
 			SDL_Rect dst = { (Sint16)xOffset, (Sint16)yOffset, 0, 0 };
@@ -473,46 +474,46 @@ int Font::showSceneString(const unsigned char* string, int x, int y) {
 }
 
 int Font::showSceneStringShadow(const unsigned char* string, int x, int y) {
-    if (!isOk) return x;
-    /* Write palette index 0 (black) directly into the canvas for every
-     * non-transparent glyph pixel.  Fonts loaded from .0FN files use
-     * colorkey = 0, so any atlas pixel != 0 is a real glyph pixel.
-     * We bypass SDL_BlitSurface entirely so the shadow index lands in
-     * the canvas independently of whatever palette remapping is active. */
-    if (SDL_LockSurface(characterAtlas) != 0) return x;
-    if (SDL_LockSurface(canvas) != 0) {
-        SDL_UnlockSurface(characterAtlas);
-        return x;
-    }
-    const Uint8 *src  = (const Uint8 *)characterAtlas->pixels;
-    Uint8       *dst  = (Uint8 *)canvas->pixels;
-    const int    srcP = characterAtlas->pitch;
-    const int    dstP = canvas->pitch;
-    const int    cW   = canvas->w;
-    const int    cH   = canvas->h;
+	if (!isOk) return x;
+	/* Write palette index 0 (black) directly into the canvas for every
+	 * non-transparent glyph pixel.  Fonts loaded from .0FN files use
+	 * colorkey = 0, so any atlas pixel != 0 is a real glyph pixel.
+	 * We bypass SDL_BlitSurface entirely so the shadow index lands in
+	 * the canvas independently of whatever palette remapping is active. */
+	if (SDL_LockSurface(characterAtlas) != 0) return x;
+	if (SDL_LockSurface(canvas) != 0) {
+		SDL_UnlockSurface(characterAtlas);
+		return x;
+	}
+	const Uint8* src = (const Uint8*)characterAtlas->pixels;
+	Uint8* dst = (Uint8*)canvas->pixels;
+	const int    srcP = characterAtlas->pitch;
+	const int    dstP = canvas->pitch;
+	const int    cW = canvas->w;
+	const int    cH = canvas->h;
 
-    int offset = x;
-    for (int i = 0; string[i]; i++) {
-        if (string[i] >= (unsigned char)nCharacters) {
-            offset += spaceWidth;
-            continue;
-        }
-        const SDL_Rect &r = atlasRects[string[i]];
-        for (int row = 0; row < r.h; row++) {
-            for (int col = 0; col < r.w; col++) {
-                Uint8 pixel = src[(r.y + row) * srcP + (r.x + col)];
-                if (pixel == 0) continue;   /* colorkey = 0 = transparent */
-                int dx = offset + col;
-                int dy = y + row;
-                if (dx >= 0 && dx < cW && dy >= 0 && dy < cH)
-                    dst[dy * dstP + dx] = 0; /* black shadow */
-            }
-        }
-        offset += r.w + sceneStringPadding;
-    }
-    SDL_UnlockSurface(canvas);
-    SDL_UnlockSurface(characterAtlas);
-    return offset;
+	int offset = x;
+	for (int i = 0; string[i]; i++) {
+		if (string[i] >= (unsigned char)nCharacters) {
+			offset += spaceWidth;
+			continue;
+		}
+		const SDL_Rect& r = atlasRects[string[i]];
+		for (int row = 0; row < r.h; row++) {
+			for (int col = 0; col < r.w; col++) {
+				Uint8 pixel = src[(r.y + row) * srcP + (r.x + col)];
+				if (pixel == 0) continue;   /* colorkey = 0 = transparent */
+				int dx = offset + col;
+				int dy = y + row;
+				if (dx >= 0 && dx < cW && dy >= 0 && dy < cH)
+					dst[dy * dstP + dx] = 0; /* black shadow */
+			}
+		}
+		offset += r.w + sceneStringPadding;
+	}
+	SDL_UnlockSurface(canvas);
+	SDL_UnlockSurface(characterAtlas);
+	return offset;
 }
 
 void Font::showNumber(int n, int x, int y) {
@@ -540,44 +541,39 @@ void Font::showNumber(int n, int x, int y) {
 	}
 }
 
-/* Saved atlas palette for mapPalette/restorePalette.
- * We remap only the characterAtlas surface palette -- NEVER currentPalette.
- * currentPalette is used by flip() for game rendering; touching it corrupts
- * game colours (e.g. turns orange carrots grey). */
+/* Saved palette range for mapPalette/restorePalette */
 static SDL_Color fontSavedPal[MAX_PALETTE_COLORS];
-static int fontSavedStart  = -1;
+static int fontSavedStart = -1;
 static int fontSavedLength = 0;
 
 void Font::mapPalette(int start, int length, int newStart, int newLength) {
-	if (!isOk || !characterAtlas) return;
-	if (!characterAtlas->format || !characterAtlas->format->palette ||
-		!characterAtlas->format->palette->colors) return;
-	SDL_Color *cur = video.getPalette();  /* read-only source for remap values */
+	if (!isOk) return;
+	/* Xbox: flip() expands canvas indices via currentPalette.
+	 * Take a full snapshot before remapping so reads and writes
+	 * never alias -- negative newLength walks backwards through palette. */
 	SDL_Color snap[MAX_PALETTE_COLORS];
+	SDL_Color* cur = video.getPalette();
 	int i;
 	memcpy(snap, cur, MAX_PALETTE_COLORS * sizeof(SDL_Color));
-	/* Save current atlas palette then remap it -- read directly from surface */
-	memcpy(fontSavedPal, characterAtlas->format->palette->colors,
-		MAX_PALETTE_COLORS * sizeof(SDL_Color));
-	fontSavedStart  = start;
+	/* Save originals for restorePalette */
+	for (i = 0; i < length && (start + i) < MAX_PALETTE_COLORS; i++)
+		fontSavedPal[i] = snap[start + i];
+	fontSavedStart = start;
 	fontSavedLength = length;
-	/* Build remapped copy and apply to atlas surface only */
-	SDL_Color remapped[MAX_PALETTE_COLORS];
-	memcpy(remapped, characterAtlas->format->palette->colors,
-		MAX_PALETTE_COLORS * sizeof(SDL_Color));
+	/* Apply remap from snapshot so aliasing is impossible */
 	for (i = 0; i < length && (start + i) < MAX_PALETTE_COLORS; i++) {
 		int srcIdx = (i * newLength / length) + newStart;
 		if (srcIdx >= 0 && srcIdx < MAX_PALETTE_COLORS)
-			remapped[start + i] = snap[srcIdx];
+			cur[start + i] = snap[srcIdx];
 	}
-	SDL_SetColors(characterAtlas, remapped, 0, MAX_PALETTE_COLORS);
 }
 
 void Font::restorePalette() {
-	if (!isOk || !characterAtlas || fontSavedStart < 0) return;
-	if (!characterAtlas->format || !characterAtlas->format->palette) return;
-	/* Restore atlas surface palette -- currentPalette is untouched */
-	SDL_SetColors(characterAtlas, fontSavedPal, 0, MAX_PALETTE_COLORS);
+	if (!isOk) return;
+	/* Restore currentPalette entries saved by mapPalette */
+	SDL_Color* cur = video.getPalette();
+	for (int i = 0; i < fontSavedLength && (fontSavedStart + i) < MAX_PALETTE_COLORS; i++)
+		cur[fontSavedStart + i] = fontSavedPal[i];
 	fontSavedStart = -1;
 }
 

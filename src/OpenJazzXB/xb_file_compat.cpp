@@ -95,11 +95,7 @@ unsigned int XbVideoPresentFlags(XbVideoMode mode) {
 void XbConfigLoad(void) {
     XbConfigDefaults();
     FILE* f = xbox_fopen("D:\\xbjazz.cfg", "rb");
-    if (!f) {
-        /* First run -- write defaults so file exists for next boot */
-        XbConfigSave();
-        return;
-    }
+    if (!f) return;
     XbJazzConfig tmp;
     if (fread(&tmp, 1, sizeof(tmp), f) == sizeof(tmp))
         if (tmp.magic == XBJAZZ_CFG_MAGIC) g_xbConfig = tmp;

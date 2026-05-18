@@ -16,13 +16,13 @@
  */
 
 #include <xtl.h>
-#include "xb_config.h"
 #include "video.h"
 #include "paletteeffects.h"
 #include "setup.h"
 #include "log.h"
 #include <stdlib.h>
 #include <string.h>
+#include "xb_config.h"
 
  /* D3DFMT_LIN_X8R8G8B8 guard -- XbTyrian defines this in case it's missing */
 #ifndef D3DFMT_LIN_X8R8G8B8
@@ -32,8 +32,8 @@
 /* -----------------------------------------------------------------------
    State
    ----------------------------------------------------------------------- */
-static D3DTexture* s_pFrameTex = nullptr;
-static D3DTexture* s_pScale2xTex = nullptr;
+static D3DTexture* s_pFrameTex = nullptr;  /* 320x200 normal */
+static D3DTexture* s_pScale2xTex = nullptr;  /* 640x400 scale2x */
 static unsigned char s_scale2xBuf[640 * 400];
 
 static const int VGA_W = SW;   /* 320 */
@@ -48,15 +48,19 @@ struct BlitVertex { float x, y, z, rhw, u, v; };
 /* Fullscreen quad -- UV in TEXEL SPACE (0..320, 0..200) per XbTyrian */
 static BlitVertex s_quad[4];
 
-static int s_textureFilter = 0;
+static int s_textureFilter = 0;   /* 0=point, 1=linear */
 
 extern int g_bbWidth;
-extern int g_bbHeight;   /* 0=point, 1=linear */
+extern int g_bbHeight;
 
 /* -----------------------------------------------------------------------
    build_quad -- 4:3 letterbox centered in 640x480
    UVs are texel-space: u runs 0..VGA_W, v runs 0..VGA_H
    ----------------------------------------------------------------------- */
+
+   /* -----------------------------------------------------------------------
+      Scale2x -- EPX/Scale2x pixel art upscale, 320x200 -> 640x400
+      ----------------------------------------------------------------------- */
 static void doScale2x(const unsigned char* src, unsigned char* dst) {
     int x, y;
     for (y = 0; y < VGA_H; y++) {
@@ -85,38 +89,49 @@ static void build_quad(void) {
         qx0 = 0; qy0 = 0; qx1 = bbW; qy1 = bbH;
         break;
     case XB_ASPECT_PIXEL: {
-        int sx = g_bbWidth / VGA_W, sy = g_bbHeight / VGA_H;
-        int sc = (sx < sy) ? sx : sy; if (sc < 1)sc = 1;
-        float tw2 = (float)(VGA_W * sc), th2 = (float)(VGA_H * sc);
+        /* Integer scale, contain */
+        int scaleX = g_bbWidth / VGA_W;
+        int scaleY = g_bbHeight / VGA_H;
+        int scale = (scaleX < scaleY) ? scaleX : scaleY;
+        if (scale < 1) scale = 1;
+        float tw2 = (float)(VGA_W * scale);
+        float th2 = (float)(VGA_H * scale);
         qx0 = (bbW - tw2) * 0.5f; qy0 = (bbH - th2) * 0.5f;
-        qx1 = qx0 + tw2; qy1 = qy0 + th2;
+        qx1 = qx0 + tw2;        qy1 = qy0 + th2;
         break;
     }
     case XB_ASPECT_FILL: {
-        int sx = g_bbWidth / VGA_W, sy = g_bbHeight / VGA_H;
-        int sc = (sx > sy) ? sx : sy; if (sc < 1)sc = 1;
-        float tw2 = (float)(VGA_W * sc), th2 = (float)(VGA_H * sc);
+        /* Integer scale, cover */
+        int scaleX = g_bbWidth / VGA_W;
+        int scaleY = g_bbHeight / VGA_H;
+        int scale = (scaleX > scaleY) ? scaleX : scaleY;
+        if (scale < 1) scale = 1;
+        float tw2 = (float)(VGA_W * scale);
+        float th2 = (float)(VGA_H * scale);
         qx0 = (bbW - tw2) * 0.5f; qy0 = (bbH - th2) * 0.5f;
-        qx1 = qx0 + tw2; qy1 = qy0 + th2;
+        qx1 = qx0 + tw2;        qy1 = qy0 + th2;
         break;
     }
-    default: { /* XB_ASPECT_4_3 */
-        float tH = bbH, tW = tH * 4.0f / 3.0f;
+    default: /* XB_ASPECT_4_3 -- corrected 4:3, letterbox/pillarbox */
+    {
+        float tH = bbH;
+        float tW = tH * 4.0f / 3.0f;
         if (tW > bbW) { tW = bbW; tH = tW * 3.0f / 4.0f; }
         qx0 = (bbW - tW) * 0.5f; qy0 = (bbH - tH) * 0.5f;
-        qx1 = qx0 + tW; qy1 = qy0 + tH;
-        break;
+        qx1 = qx0 + tW;        qy1 = qy0 + tH;
     }
+    break;
     }
 
+    /* UV range: texel-space. Scale2x uses 640x400 texture. */
     float tw = (g_xbConfig.filterMode == XB_FILTER_SCALE2X && s_pScale2xTex)
         ? (float)(VGA_W * 2) : (float)VGA_W;
     float th = (g_xbConfig.filterMode == XB_FILTER_SCALE2X && s_pScale2xTex)
         ? (float)(VGA_H * 2) : (float)VGA_H;
-    s_quad[0] = { qx0, qy0, 0.0f, 1.0f, 0.0f, 0.0f };
-    s_quad[1] = { qx1, qy0, 0.0f, 1.0f, tw,   0.0f };
-    s_quad[2] = { qx0, qy1, 0.0f, 1.0f, 0.0f, th };
-    s_quad[3] = { qx1, qy1, 0.0f, 1.0f, tw,   th };
+    s_quad[0] = { qx0, qy0, 0.0f, 1.0f,  0.0f, 0.0f };
+    s_quad[1] = { qx1, qy0, 0.0f, 1.0f,  tw,   0.0f };
+    s_quad[2] = { qx0, qy1, 0.0f, 1.0f,  0.0f, th };
+    s_quad[3] = { qx1, qy1, 0.0f, 1.0f,  tw,   th };
 }
 
 /* -----------------------------------------------------------------------
@@ -189,10 +204,12 @@ bool Video::init(SetupOptions cfg) {
         return false;
     }
 
-    /* Optional 640x400 scale2x texture */
+    /* Try to create 640x400 scale2x texture -- optional, falls back gracefully */
     s_pScale2xTex = D3DDevice_CreateTexture2(
         VGA_W * 2, VGA_H * 2, 1, 1, 0, D3DFMT_LIN_X8R8G8B8, D3DRTYPE_TEXTURE);
+    /* s_pScale2xTex may be null on some hardware -- scale2x falls back to smooth */
 
+    /* Apply filter from config at init */
     s_textureFilter = (g_xbConfig.filterMode == XB_FILTER_SMOOTH) ? 1 : 0;
     build_quad();
     setup_render_states();
@@ -265,7 +282,7 @@ void Video::flip(int mspf, PaletteEffect* paletteEffects, bool effectsStopped) {
          * currentPalette (feedback loop) making WhiteInEffect permanent. */
         paletteEffects->apply(framePal, false, mspf, effectsStopped);
 
-    /* Choose texture -- scale2x if available and selected */
+    /* Lock -- bail if it fails */
     bool useScale2x = (g_xbConfig.filterMode == XB_FILTER_SCALE2X && s_pScale2xTex);
     D3DTexture* activeTex = useScale2x ? s_pScale2xTex : s_pFrameTex;
 
@@ -277,10 +294,11 @@ void Video::flip(int mspf, PaletteEffect* paletteEffects, bool effectsStopped) {
 
     if (useScale2x) {
         doScale2x((const unsigned char*)canvas->pixels, s_scale2xBuf);
+        int sw2 = VGA_W * 2;
         for (int y = 0; y < VGA_H * 2; y++) {
-            const unsigned char* srow = s_scale2xBuf + y * (VGA_W * 2);
+            const unsigned char* srow = s_scale2xBuf + y * sw2;
             DWORD* drow = dst + y * dpitch;
-            for (int x = 0; x < VGA_W * 2; x++) {
+            for (int x = 0; x < sw2; x++) {
                 SDL_Color c = framePal[srow[x]];
                 drow[x] = ((DWORD)c.r << 16) | ((DWORD)c.g << 8) | (DWORD)c.b;
             }
@@ -306,7 +324,7 @@ void Video::flip(int mspf, PaletteEffect* paletteEffects, bool effectsStopped) {
     D3DDevice_SetTexture(0, activeTex);
     D3DDevice_DrawVerticesUP(D3DPT_TRIANGLESTRIP, 4, s_quad, sizeof(BlitVertex));
 
-    /* Scanlines */
+    /* Scanlines -- darken alternate rows */
     if (g_xbConfig.scanlines != XB_SCANLINES_OFF) {
         int scanH = g_bbHeight / VGA_H;
         if (scanH < 1) scanH = 1;
@@ -349,27 +367,11 @@ void Video::destroySurface(SDL_Surface* s) { SDL_FreeSurface(s); }
 
 void Video::restoreSurfacePalette(SDL_Surface* s) {
     if (s) SDL_SetColors(s, currentPalette, 0, 256);
-    /* Restore currentPalette entries modified by setSurfacePalette */
-    if (s_savedStart >= 0 && s_savedLength > 0) {
-        memcpy(currentPalette + s_savedStart, s_savedPalEntries + s_savedStart,
-            s_savedLength * sizeof(SDL_Color));
-        s_savedStart = -1;
-    }
 }
 
 void Video::setSurfacePalette(SDL_Surface* s, SDL_Color* pal,
     int start, int length) {
     if (s && pal) SDL_SetColors(s, pal, start, length);
-    /* Also update currentPalette so flip() uses the remapped colors.
-     * Save previous values so restoreSurfacePalette can undo this. */
-    if (pal && start >= 0 && length > 0 && start + length <= 256) {
-        if (s_savedStart < 0) {  /* save only once per map/restore cycle */
-            memcpy(s_savedPalEntries + start, currentPalette + start,
-                length * sizeof(SDL_Color));
-            s_savedStart = start;
-            s_savedLength = length;
-        }
-    }
 }
 
 void Video::enableColorKey(SDL_Surface* s, unsigned int idx) {
@@ -438,9 +440,10 @@ void Video::blitSurface(SDL_Surface* src, SDL_Rect* srcRect,
     }
 }
 
+
 void XbVideoApplyConfig() {
     s_textureFilter = (g_xbConfig.filterMode == XB_FILTER_SMOOTH) ? 1 : 0;
-    build_quad();
+    build_quad();          /* re-apply aspect mode */
     setup_render_states();
 }
 

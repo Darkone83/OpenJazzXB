@@ -1,3 +1,4 @@
+
 /**
  *
  * @file game.h
@@ -29,9 +30,9 @@
 #include "level.h"
 
 
- // Constants
+// Constants
 
- // Time intervals
+// Time intervals
 #define T_SSEND   20
 #define T_SCHECK  1000
 #define T_CSEND   10
@@ -85,46 +86,46 @@ class File;
 /// Base class for game handling classes
 class Game {
 
-private:
-	int planetId; ///< ID of last planet approach sequence
+	private:
+		int planetId; ///< ID of last planet approach sequence
 
-	bool isFileType(const char* fileName, const char* type, int typeLength);
+		bool isFileType (const char *fileName, const char *type, int typeLength);
 
-protected:
-	GameMode* mode; ///< Mode-specific management
-	Level* baseLevel; ///< Current level
-	char* levelFile; ///< Current level's file name
-	LevelType      levelType; ///< Current level's type
-	difficultyType difficulty; ///< Difficulty setting (easy, medium, hard, turbo (hard in JJ2 levels))
-	unsigned int   sendTime; ///< The next time data will be sent
-	unsigned int   checkTime; ///< The next time a connection/disconnection will be dealt with
-	short int      checkX; ///< X-coordinate of the level checkpoint
-	short int      checkY; ///< Y-coordinate of the level checkpoint
+	protected:
+		GameMode*      mode; ///< Mode-specific management
+		Level*         baseLevel; ///< Current level
+		char*          levelFile; ///< Current level's file name
+		LevelType      levelType; ///< Current level's type
+		difficultyType difficulty; ///< Difficulty setting (easy, medium, hard, turbo (hard in JJ2 levels))
+		unsigned int   sendTime; ///< The next time data will be sent
+		unsigned int   checkTime; ///< The next time a connection/disconnection will be dealt with
+		short int      checkX; ///< X-coordinate of the level checkpoint
+		short int      checkY; ///< Y-coordinate of the level checkpoint
 
-	Game();
+		Game ();
 
-	GameMode* createMode(GameModeType modeType);
+		GameMode* createMode (GameModeType modeType);
 
-	LevelType getLevelType(const char* fileName);
-	int       playLevel(char* fileName, bool intro, bool checkpoint);
+		LevelType getLevelType (const char* fileName);
+		int       playLevel    (char *fileName, bool intro, bool checkpoint);
 
-	void addLevelPlayer(Player* player);
+		void addLevelPlayer (Player *player);
 
-public:
-	virtual ~Game();
+	public:
+		virtual ~Game ();
 
-	GameMode* getMode();
-	difficultyType getDifficulty();
-	void           setDifficulty(difficultyType diff);
-	int            playLevel(char* fileName);
-	virtual int    setLevel(char* fileName) = 0;
-	int            play();
-	void           view(int change);
-	virtual void   send(unsigned char* buffer) = 0;
-	virtual int    step(unsigned int ticks) = 0;
-	virtual void   score(unsigned char team) = 0;
-	virtual void   setCheckpoint(int gridX, int gridY) = 0;
-	void           resetPlayer(Player* player);
+		GameMode*      getMode       ();
+		difficultyType getDifficulty ();
+		void           setDifficulty (difficultyType diff);
+		int            playLevel     (char *fileName);
+		virtual int    setLevel      (char *fileName) = 0;
+		int            play          ();
+		void           view          (int change);
+		virtual void   send          (unsigned char *buffer) = 0;
+		virtual int    step          (unsigned int ticks) = 0;
+		virtual void   score         (unsigned char team) = 0;
+		virtual void   setCheckpoint (int gridX, int gridY) = 0;
+		void           resetPlayer   (Player *player);
 
 };
 
@@ -132,16 +133,15 @@ public:
 /// Game handling for single-player local play
 class LocalGame : public Game {
 
-public:
-	LocalGame(const char* firstLevel, difficultyType gameDifficulty);
-	~LocalGame() override;
+	public:
+		LocalGame  (const char *firstLevel, difficultyType gameDifficulty);
+		~LocalGame () override;
 
-	int  setLevel(char* fileName) override;
-	void send(unsigned char* buffer) override;
-	int  step(unsigned int ticks) override;
-	bool levelDataPending();
-	void score(unsigned char team) override;
-	void setCheckpoint(int gridX, int gridY) override;
+		int  setLevel      (char *fileName) override;
+		void send          (unsigned char *buffer) override;
+		int  step          (unsigned int ticks) override;
+		void score         (unsigned char team) override;
+		void setCheckpoint (int gridX, int gridY) override;
 
 };
 
@@ -149,29 +149,28 @@ public:
 /// Game handling for multiplayer servers
 class ServerGame : public Game {
 
-private:
-	int            clientStatus[MAX_CLIENTS]; /**< Array of client statuses
-		-2: Connected and operational
-		-1: Not connected
-		>=0: Number of bytes of the level that have been sent */
-	int            clientPlayer[MAX_CLIENTS]; ///< Array of client player indexes
-	int            clientSock[MAX_CLIENTS]; ///< Array of client sockets
-	unsigned char  recvBuffers[MAX_CLIENTS][BUFFER_LENGTH]; ///< Array of buffers containing data received from clients
-	int            received[MAX_CLIENTS]; ///< Array containing the amount of data received from each client
-	unsigned char* levelData; ///< Contents of the current level file
-	int            levelSize; ///< Size of the current level file
-	int            sock; ///< Server socket
+	private:
+		int            clientStatus[MAX_CLIENTS]; /**< Array of client statuses
+ 			-2: Connected and operational
+ 			-1: Not connected
+			>=0: Number of bytes of the level that have been sent */
+		int            clientPlayer[MAX_CLIENTS]; ///< Array of client player indexes
+		int            clientSock[MAX_CLIENTS]; ///< Array of client sockets
+		unsigned char  recvBuffers[MAX_CLIENTS][BUFFER_LENGTH]; ///< Array of buffers containing data received from clients
+		int            received[MAX_CLIENTS]; ///< Array containing the amount of data received from each client
+		unsigned char *levelData; ///< Contents of the current level file
+		int            levelSize; ///< Size of the current level file
+		int            sock; ///< Server socket
 
-public:
-	ServerGame(GameModeType mode, char* firstLevel, difficultyType gameDifficulty);
-	~ServerGame() override;
+	public:
+		ServerGame         (GameModeType mode, char *firstLevel, difficultyType gameDifficulty);
+		~ServerGame        () override;
 
-	int  setLevel(char* fileName) override;
-	void send(unsigned char* buffer) override;
-	int  step(unsigned int ticks) override;
-	bool levelDataPending();
-	void score(unsigned char team) override;
-	void setCheckpoint(int gridX, int gridY) override;
+		int  setLevel      (char *fileName) override;
+		void send          (unsigned char *buffer) override;
+		int  step          (unsigned int ticks) override;
+		void score         (unsigned char team) override;
+		void setCheckpoint (int gridX, int gridY) override;
 
 };
 
@@ -179,25 +178,25 @@ public:
 /// Game handling for multiplayer clients
 class ClientGame : public Game {
 
-private:
-	File* file; ///< File to which the incoming level will be written
-	unsigned char  recvBuffer[BUFFER_LENGTH]; ///< Buffer containing data received from server
-	int            received; ///< Amount of data received from server
-	int            clientID; ///< Client's index on the server
-	int            maxPlayers; ///< The maximum number of players in the game
-	int            sock; ///< Client socket
+	private:
+		File          *file; ///< File to which the incoming level will be written
+		unsigned char  recvBuffer[BUFFER_LENGTH]; ///< Buffer containing data received from server
+		int            received; ///< Amount of data received from server
+		int            clientID; ///< Client's index on the server
+		int            maxPlayers; ///< The maximum number of players in the game
+		int            sock; ///< Client socket
 
-public:
-	explicit ClientGame(char* address);
-	~ClientGame() override;
+	public:
+		explicit ClientGame(char *address);
+		~ClientGame() override;
 
-	int  setLevel(char* fileName) override;
-	void send(unsigned char* buffer) override;
-	int  step(unsigned int ticks) override;
-	bool levelDataPending();
-	void score(unsigned char team) override;
-	void setCheckpoint(int gridX, int gridY) override;
+		int  setLevel      (char *fileName) override;
+		void send          (unsigned char *buffer) override;
+		int  step          (unsigned int ticks) override;
+		void score         (unsigned char team) override;
+		void setCheckpoint (int gridX, int gridY) override;
 
 };
 
 #endif
+

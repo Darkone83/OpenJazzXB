@@ -78,14 +78,10 @@
     <ClCompile Include="xb_exit.cpp" />
     <ClCompile Include="xb_file_compat.cpp" />
     <ClCompile Include="xb_input.cpp" />
-    <ClCompile Include="xb_net.cpp" />
-    <ClCompile Include="xb_netgame.cpp" />
-    <ClCompile Include="xb_net_glue.cpp" />
     <ClCompile Include="xb_platform.cpp" />
     <ClCompile Include="xb_runtime.cpp" />
     <ClCompile Include="xb_sdl_compat.cpp" />
     <ClCompile Include="xb_splash.cpp" />
-    <ClCompile Include="xb_textentry.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="Media\Copy Assets Here.txt" />
@@ -143,9 +139,6 @@
     <ClInclude Include="util.h" />
     <ClInclude Include="version.h" />
     <ClInclude Include="video.h" />
-    <ClInclude Include="xb_net.h" />
-    <ClInclude Include="xb_netgame.h" />
-    <ClInclude Include="xb_textentry.h" />
     <ClInclude Include="xb_audio.h" />
     <ClInclude Include="xb_compat.h" />
     <ClInclude Include="xb_config.h" />
@@ -243,7 +236,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>xboxkrnl.lib;libcmtd.lib;xapilibd.lib;d3d8d.lib;d3dx8d.lib</AdditionalDependencies>
+      <AdditionalDependencies>xboxkrnl.lib;libcmtd.lib;xapilibd.lib;d3d8d.lib;d3dx8d.lib;dsound.lib</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
       <BaseAddress>
       </BaseAddress>

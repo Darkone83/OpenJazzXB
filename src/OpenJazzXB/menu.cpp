@@ -27,7 +27,6 @@
 
 
 #include "menu.h"
-#include "xb_textentry.h"
 #include "plasma.h"
 
 #include "controls.h"
@@ -188,18 +187,184 @@ int Menu::generic(const char* title, const char** optionNames, int options, int&
  * @return Error code
  */
 int Menu::textInput(const char* request, char*& text, bool ip) {
-	/* Xbox: replace PC keyboard input with d-pad character cycling widget */
-	char buf[STRING_LENGTH + 1];
-	strncpy(buf, text ? text : "", STRING_LENGTH);
-	buf[STRING_LENGTH] = '\0';
 
-	int mode = ip ? XB_ENTRY_IP : XB_ENTRY_NAME;
-	int ret = xbTextEntry(request, buf, ip ? 15 : STRING_LENGTH, mode);
+	char* input;
 
-	if (ret == E_NONE) {
+	// TODO: simplify
+
+#if (defined(__3DS__) || defined(__SWITCH__))
+
+	bool res;
+
+	if (ip)
+		res = platform->InputIP(text, input);
+	else
+		res = platform->InputString(request, text, input);
+
+	if (res) {
+
 		playConfirmSound();
+
 		delete[] text;
-		text = createString(buf);
+		text = input;
+
+		return E_NONE;
+
 	}
-	return ret;
+
+#elif defined(__vita__)
+
+	if (platform->InputString(request, text, input)) {
+
+		playConfirmSound();
+
+		delete[] text;
+		text = input;
+
+		return E_NONE;
+
+	}
+
+#else
+
+	int count, terminate, added, x, y;
+
+	video.setPalette(menuPalette);
+
+	// Create input string
+	input = createEditableString(text);
+
+	unsigned int cursor = strlen(input);
+
+	while (true) {
+
+		int character = loop(TYPING_LOOP);
+
+		if (character == E_QUIT) {
+
+			delete[] input;
+
+			return E_QUIT;
+
+		}
+
+		// Ensure there is space for another character
+		if (cursor < STRING_LENGTH) {
+
+			terminate = (input[cursor] == 0);
+
+			// If the character is valid, add it to the input string
+
+			added = 0;
+
+			if (!ip) {
+
+				if (((character >= 'a') && (character <= 'z'))
+					|| (character == ' ')) {
+
+					input[cursor] = character;
+					added = 1;
+
+				}
+				else if ((character >= 'A') && (character <= 'Z')) {
+
+					input[cursor] = character | 32;
+					added = 1;
+
+				}
+
+			}
+
+			if (((character >= '0') && (character <= '9'))
+				|| (character == '.')) {
+
+				input[cursor] = character;
+				added = 1;
+
+			}
+
+			if (added) {
+
+				cursor++;
+				if (terminate) input[cursor] = 0;
+
+			}
+
+		}
+
+		if ((character == SDLK_DELETE) && (cursor < strlen(input))) {
+
+			for (count = cursor; count < STRING_LENGTH; count++)
+				input[count] = input[count + 1];
+
+		}
+
+		if ((character == SDLK_BACKSPACE) && (cursor > 0)) {
+
+			for (count = cursor - 1; count < STRING_LENGTH; count++)
+				input[count] = input[count + 1];
+
+			cursor--;
+
+		}
+
+
+		if (controls.release(C_ESCAPE) ||
+			(controls.getCursor(x, y) && (x < 100) && (y >= canvasH - 12) && controls.wasCursorReleased())) {
+
+			delete[] input;
+
+			return E_RETURN;
+
+		}
+
+
+		SDL_Delay(T_MENU_FRAME);
+
+		video.clearScreen(15);
+
+		// Draw the prompt
+		fontmn2->showStringCentered(request);
+
+		// Draw the section of the text before the cursor
+		fontmn2->mapPalette(240, 8, 114, 16);
+		terminate = input[cursor];
+		input[cursor] = 0;
+		Point pos = fontmn2->showString(input, (canvasW >> 1) - 152, (canvasH >> 1) + 16);
+
+		// Draw the cursor
+		video.drawRect(pos.x, (canvasH >> 1) + 26, 8, 2, 79);
+
+		// Draw the section of text after the cursor
+		input[cursor] = terminate;
+		fontmn2->showString(input + cursor, pos.x, (canvasH >> 1) + 16);
+		fontmn2->restorePalette();
+
+		showEscString();
+
+
+		if (controls.release(C_LEFT) && (cursor > 0)) cursor--;
+
+		if (controls.release(C_RIGHT) && (cursor < strlen(input))) cursor++;
+
+		if (controls.release(C_ENTER)) {
+
+			playConfirmSound();
+
+			// Replace the original string with the input string
+			delete[] text;
+			text = input;
+
+			return E_NONE;
+
+		}
+
+	}
+
+	delete[] input;
+
+#endif
+
+	return E_RETURN;
+
 }

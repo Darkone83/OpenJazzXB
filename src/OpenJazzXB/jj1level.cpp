@@ -948,17 +948,7 @@ int JJ1Level::play() {
 
 
 		// Draw statistics, menu etc.
-		if (pmenu) {
-			SDL_Color white = { 255, 255, 255, 0 };
-			SDL_Color yellow = { 255, 255,   0, 0 };
-			video.changePalette(&white, 15, 1);
-			video.changePalette(&yellow, 47, 1);
-		}
 		drawOverlay(LEVEL_BLACK, pmenu, option, 15, 47, -16);
-		if (pmenu) {
-			video.changePalette(palette + 15, 15, 1);
-			video.changePalette(palette + 47, 47, 1);
-		}
 
 	}
 
