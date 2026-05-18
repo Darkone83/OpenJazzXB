@@ -129,18 +129,21 @@ int ServerGame::step(unsigned int ticks) {
                 net->send(clientSock[count], sendBuffer);
             }
 
-            length = levelSize - clientStatus[count];
-            if (length > 251) length = 251;
+            int remaining = levelSize - clientStatus[count];
+            int chunk = (remaining > 251) ? 251 : remaining;
 
-            sendBuffer[0] = MTL_G_LEVEL + length;
+            sendBuffer[0] = (unsigned char)(MTL_G_LEVEL + chunk);
             sendBuffer[1] = MT_G_LEVEL;
             sendBuffer[2] = clientStatus[count] >> 8;
             sendBuffer[3] = clientStatus[count] & 255;
-            memcpy(sendBuffer + 4, levelData + clientStatus[count], length);
-            length = net->send(clientSock[count], sendBuffer);
+            if (chunk > 0)
+                memcpy(sendBuffer + 4, levelData + clientStatus[count], chunk);
+            net->send(clientSock[count], sendBuffer);
 
-            if (length == MTL_G_LEVEL) clientStatus[count] = -2;
-            else if (length > 0) clientStatus[count] += length - MTL_G_LEVEL;
+            /* Advance based on what we put in the packet, not send() return */
+            clientStatus[count] += chunk;
+            if (clientStatus[count] >= levelSize)
+                clientStatus[count] = -2;  /* all data sent */
         }
 
         /* ── Receive from operational clients ──────────────────────────── */
