@@ -670,6 +670,7 @@ static int xbNetLobby() {
 
             XbNetG_Disconnect();
             xbRestoreMenuPalette();
+            playMusic("MENUSNG.PSM");
 
             if (gameRet == E_QUIT)
                 return E_QUIT;
@@ -752,6 +753,7 @@ static int xbNetLobby() {
 
                 XbNetG_Disconnect();
                 xbRestoreMenuPalette();
+                playMusic("MENUSNG.PSM");
                 return E_NONE;
             }
         }

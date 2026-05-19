@@ -111,6 +111,18 @@ MainMenu::MainMenu() {
 
 	}
 
+
+	/* OpenJazzXB logo palette slot.
+	 * The embedded Team Resurgent logo uses index 253. The stock MENU.000
+	 * palette maps that index to red, so set it explicitly for the main menu.
+	 * This does not reintroduce SDL palette mutation; it only adjusts the
+	 * menu palette before video.setPalette(palette) uses it.
+	 */
+	palette[253].r = 224;
+	palette[253].g = 64;
+	palette[253].b = 224;
+	palette[253].unused = 0;
+
 	video.enableColorKey(background, 0);
 	video.enableColorKey(highlight, 0);
 	if (logo) video.enableColorKey(logo, 28);

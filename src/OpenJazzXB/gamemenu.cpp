@@ -631,10 +631,19 @@ int GameMenu::newGameEpisode(GameModeType mode) {
 		plasma.draw();
 
 		const char* title = "EPISODES";
+
+		/* Xbox-safe font palette:
+		 * The episode title also needs the normal menu remap. Without this,
+		 * it can render using raw font indices and appear black.
+		 */
+		fontmn2->mapPalette(240, 8, 9, 80);
+
 		if (canvasW == SW)
 			fontmn2->showString(title, (canvasW >> 1) + 48, 8);
 		else
 			fontmn2->showString(title, (canvasW >> 1), (canvasH >> 1) - 124, alignX::Center);
+
+		fontmn2->restorePalette();
 
 		// center on right side
 		dst.x = (canvasW >> 1) + 16; // image is 144 pixels wide
@@ -656,16 +665,19 @@ int GameMenu::newGameEpisode(GameModeType mode) {
 
 		for (count = 0; count < 12; count++) {
 
-			if (count == episode) {
+			/* Xbox-safe episode list:
+			 * The original menu used negative font palette spans for black-on-white
+			 * selected rows and grey unavailable rows. With the Xbox raw-index
+			 * renderer, those negative remaps can produce unreadable/corrupt-looking
+			 * text. Keep the normal bright menu font remap explicit for every row,
+			 * and use the outline rectangle to indicate the selected episode.
+			 */
+			fontmn2->mapPalette(240, 8, 9, 80);
 
-				// black on white
-				fontmn2->mapPalette(240, 8, 79, -80);
+			if (count == episode) {
 				video.drawRect(episodeX - 2, (canvasH >> 1) + (count << 4) - 94,
 					160, 15, 79, false);
-
 			}
-			else if (!exists[count])
-				fontmn2->mapPalette(240, 8, 94, -16);
 
 			const char* tag;
 			const char* title;
@@ -692,10 +704,9 @@ int GameMenu::newGameEpisode(GameModeType mode) {
 			fontmn2->showString(title, episodeX + 16,
 				(canvasH >> 1) + (count << 4) - 92);
 
-			if ((count == episode) || (!exists[count]))
-				fontmn2->mapPalette(240, 8, 9, 80);
-
 		}
+
+		fontmn2->restorePalette();
 
 		showEscString(false);
 

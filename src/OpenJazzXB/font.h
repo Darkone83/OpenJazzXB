@@ -37,6 +37,8 @@ class Font {
 private:
 	void           commonSetup();
 	void           cleanMapping();
+	void           buildRemapTable(int start, int length, int newStart, int newLength);
+	void           blitGlyphMapped(const SDL_Rect& srcRect, int x, int y);
 	SDL_Surface* characterAtlas; ///< Symbol images
 	SDL_Rect       atlasRects[MAX_FONT_CHARS]; ///< Symbol positions
 	bool           isOk; ///< Font is loaded and usable
@@ -44,6 +46,13 @@ private:
 	unsigned char  spaceWidth; ///< Horizontal spacing of displayed characters
 	unsigned char  lineHeight; ///< Vertical spacing of displayed characters
 	unsigned int   map[MAX_FONT_CHARS]; ///< Maps ASCII values to symbol indices
+
+	// Xbox-safe palette remap state.
+	// Original OpenJazz remapped SDL surface palettes. On Xbox, the renderer
+	// keeps surfaces as raw 8-bit indices and resolves color in video.flip(),
+	// so font remaps must translate glyph pixel indices during blit instead.
+	bool           remapActive;
+	unsigned char  remapTable[256];
 
 public:
 	explicit Font(const char* fileName);

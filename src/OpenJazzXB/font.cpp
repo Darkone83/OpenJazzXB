@@ -41,6 +41,82 @@ void Font::commonSetup() {
 	nCharacters = MAX_FONT_CHARS;
 	memset(atlasRects, 0, sizeof(atlasRects));
 	memset(map, INVALID_FONT_CHAR, sizeof(map));
+	remapActive = false;
+	for (int i = 0; i < 256; i++) remapTable[i] = (unsigned char)i;
+}
+
+void Font::buildRemapTable(int start, int length, int newStart, int newLength) {
+
+	for (int i = 0; i < 256; i++)
+		remapTable[i] = (unsigned char)i;
+
+	if (length <= 0) {
+		remapActive = false;
+		return;
+	}
+
+	for (int i = 0; i < length; i++) {
+
+		int srcIdx = start + i;
+		if (srcIdx < 0 || srcIdx >= MAX_PALETTE_COLORS)
+			continue;
+
+		int dstIdx = (i * newLength / length) + newStart;
+		if (dstIdx < 0) dstIdx = 0;
+		if (dstIdx >= MAX_PALETTE_COLORS) dstIdx = MAX_PALETTE_COLORS - 1;
+
+		remapTable[srcIdx] = (unsigned char)dstIdx;
+	}
+
+	remapActive = true;
+}
+
+void Font::blitGlyphMapped(const SDL_Rect& srcRect, int x, int y) {
+
+	if (!characterAtlas || !canvas || !characterAtlas->pixels || !canvas->pixels)
+		return;
+
+	if (SDL_LockSurface(characterAtlas) != 0)
+		return;
+
+	if (SDL_LockSurface(canvas) != 0) {
+		SDL_UnlockSurface(characterAtlas);
+		return;
+	}
+
+	const Uint8* src = (const Uint8*)characterAtlas->pixels;
+	Uint8* dst = (Uint8*)canvas->pixels;
+	const int srcPitch = characterAtlas->pitch;
+	const int dstPitch = canvas->pitch;
+	const int dstW = canvas->w;
+	const int dstH = canvas->h;
+
+	const bool hasKey = (characterAtlas->flags & SDL_SRCCOLORKEY) != 0;
+	const Uint8 colorKey = (Uint8)(characterAtlas->format->colorkey & 0xFF);
+
+	for (int row = 0; row < srcRect.h; row++) {
+		int dy = y + row;
+		if (dy < 0 || dy >= dstH)
+			continue;
+
+		const Uint8* srcRow = src + ((srcRect.y + row) * srcPitch) + srcRect.x;
+		Uint8* dstRow = dst + (dy * dstPitch);
+
+		for (int col = 0; col < srcRect.w; col++) {
+			int dx = x + col;
+			if (dx < 0 || dx >= dstW)
+				continue;
+
+			Uint8 pixel = srcRow[col];
+			if (hasKey && pixel == colorKey)
+				continue;
+
+			dstRow[dx] = remapActive ? remapTable[pixel] : pixel;
+		}
+	}
+
+	SDL_UnlockSurface(canvas);
+	SDL_UnlockSurface(characterAtlas);
 }
 
 void Font::cleanMapping() {
@@ -448,8 +524,13 @@ Point Font::showString(const char* string, int x, int y,
 		else {
 			unsigned int c = map[int(string[i])];
 			if (c == INVALID_FONT_CHAR) { xOffset += spaceWidth; continue; }
-			SDL_Rect dst = { (Sint16)xOffset, (Sint16)yOffset, 0, 0 };
-			video.blitSurface(characterAtlas, &atlasRects[c], canvas, &dst);
+			if (remapActive) {
+				blitGlyphMapped(atlasRects[c], xOffset, yOffset);
+			}
+			else {
+				SDL_Rect dst = { (Sint16)xOffset, (Sint16)yOffset, 0, 0 };
+				video.blitSurface(characterAtlas, &atlasRects[c], canvas, &dst);
+			}
 			xOffset += atlasRects[c].w + normalPadding;
 		}
 	}
@@ -464,10 +545,15 @@ int Font::showSceneString(const unsigned char* string, int x, int y) {
 	if (!isOk) return x;
 	int offset = x;
 	for (int i = 0; string[i]; i++) {
-		SDL_Rect dst = { (Sint16)offset, (Sint16)y, 0, 0 };
 		if (string[i] >= nCharacters) { offset += spaceWidth; continue; }
 		int c = string[i];
-		video.blitSurface(characterAtlas, &atlasRects[c], canvas, &dst);
+		if (remapActive) {
+			blitGlyphMapped(atlasRects[c], offset, y);
+		}
+		else {
+			SDL_Rect dst = { (Sint16)offset, (Sint16)y, 0, 0 };
+			video.blitSurface(characterAtlas, &atlasRects[c], canvas, &dst);
+		}
 		offset += atlasRects[c].w + sceneStringPadding;
 	}
 	return offset;
@@ -521,8 +607,14 @@ void Font::showNumber(int n, int x, int y) {
 	SDL_Rect dst;
 	if (!n) {
 		unsigned int c = map[int('0')];
-		dst.y = (Sint16)y; dst.x = (Sint16)(x - atlasRects[c].w);
-		video.blitSurface(characterAtlas, &atlasRects[c], canvas, &dst);
+		int gx = x - atlasRects[c].w;
+		if (remapActive) {
+			blitGlyphMapped(atlasRects[c], gx, y);
+		}
+		else {
+			dst.y = (Sint16)y; dst.x = (Sint16)gx;
+			video.blitSurface(characterAtlas, &atlasRects[c], canvas, &dst);
+		}
 		return;
 	}
 	int count = (n > 0) ? n : -n;
@@ -530,51 +622,51 @@ void Font::showNumber(int n, int x, int y) {
 	while (count) {
 		unsigned int c = map[int('0' + (count % 10))];
 		offset -= atlasRects[c].w;
-		dst.y = (Sint16)y; dst.x = (Sint16)offset;
-		video.blitSurface(characterAtlas, &atlasRects[c], canvas, &dst);
+		if (remapActive) {
+			blitGlyphMapped(atlasRects[c], offset, y);
+		}
+		else {
+			dst.y = (Sint16)y; dst.x = (Sint16)offset;
+			video.blitSurface(characterAtlas, &atlasRects[c], canvas, &dst);
+		}
 		count /= 10;
 	}
 	if (n < 0) {
 		unsigned int c = map[int('-')];
-		dst.y = (Sint16)y; dst.x = (Sint16)(offset - atlasRects[c].w);
-		video.blitSurface(characterAtlas, &atlasRects[c], canvas, &dst);
+		int gx = offset - atlasRects[c].w;
+		if (remapActive) {
+			blitGlyphMapped(atlasRects[c], gx, y);
+		}
+		else {
+			dst.y = (Sint16)y; dst.x = (Sint16)gx;
+			video.blitSurface(characterAtlas, &atlasRects[c], canvas, &dst);
+		}
 	}
 }
 
-/* Saved palette range for mapPalette/restorePalette */
-static SDL_Color fontSavedPal[MAX_PALETTE_COLORS];
-static int fontSavedStart = -1;
-static int fontSavedLength = 0;
-
 void Font::mapPalette(int start, int length, int newStart, int newLength) {
+
 	if (!isOk) return;
-	/* Xbox: flip() expands canvas indices via currentPalette.
-	 * Take a full snapshot before remapping so reads and writes
-	 * never alias -- negative newLength walks backwards through palette. */
-	SDL_Color snap[MAX_PALETTE_COLORS];
-	SDL_Color* cur = video.getPalette();
-	int i;
-	memcpy(snap, cur, MAX_PALETTE_COLORS * sizeof(SDL_Color));
-	/* Save originals for restorePalette */
-	for (i = 0; i < length && (start + i) < MAX_PALETTE_COLORS; i++)
-		fontSavedPal[i] = snap[start + i];
-	fontSavedStart = start;
-	fontSavedLength = length;
-	/* Apply remap from snapshot so aliasing is impossible */
-	for (i = 0; i < length && (start + i) < MAX_PALETTE_COLORS; i++) {
-		int srcIdx = (i * newLength / length) + newStart;
-		if (srcIdx >= 0 && srcIdx < MAX_PALETTE_COLORS)
-			cur[start + i] = snap[srcIdx];
-	}
+
+	/* Xbox-safe remap:
+	 * Do not mutate SDL surface palettes and do not modify video.currentPalette.
+	 * The Xbox renderer treats all SDL surfaces as raw 8-bit index buffers,
+	 * then Video::flip() expands those indices through currentPalette.
+	 *
+	 * So mapPalette() becomes a temporary glyph-index translation table.
+	 * showString/showNumber/showSceneString apply the table while copying
+	 * glyph pixels to the 8-bit canvas. restorePalette() simply clears it.
+	 */
+	buildRemapTable(start, length, newStart, newLength);
 }
 
 void Font::restorePalette() {
+
 	if (!isOk) return;
-	/* Restore currentPalette entries saved by mapPalette */
-	SDL_Color* cur = video.getPalette();
-	for (int i = 0; i < fontSavedLength && (fontSavedStart + i) < MAX_PALETTE_COLORS; i++)
-		cur[fontSavedStart + i] = fontSavedPal[i];
-	fontSavedStart = -1;
+
+	remapActive = false;
+	for (int i = 0; i < 256; i++)
+		remapTable[i] = (unsigned char)i;
 }
 
 int Font::getStringWidth(const char* string) {
