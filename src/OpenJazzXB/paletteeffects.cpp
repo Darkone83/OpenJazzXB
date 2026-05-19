@@ -655,9 +655,22 @@ void WaterPaletteEffect::apply (SDL_Color* shownPalette, bool direct, int mspf, 
 
 	currentPalette = video.getPalette();
 
-	if (level) position = localPlayer->getLevelPlayer()->getY() - level->getWaterLevel();
+	/*
+	 * Xbox safety:
+	 * The attract/demo path can have palette effects active while the normal
+	 * local player or its LevelPlayer is not valid yet, or has just been
+	 * torn down during a demo transition. The old code dereferenced
+	 * localPlayer->getLevelPlayer() unconditionally here, which can produce
+	 * a deterministic bugcheck during the second demo/water palette path.
+	 */
+	if (!localPlayer) return;
+
+	LevelPlayer* lp = localPlayer->getLevelPlayer();
+	if (!lp) return;
+
+	if (level) position = lp->getY() - level->getWaterLevel();
 #ifdef ENABLE_JJ2
-	else if (jj2Level) position = localPlayer->getLevelPlayer()->getY() - jj2Level->getWaterLevel();
+	else if (jj2Level) position = lp->getY() - jj2Level->getWaterLevel();
 #endif
 	else return;
 

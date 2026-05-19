@@ -53,10 +53,11 @@ typedef struct XbJazzConfig {
     XbFilterMode    filterMode;
     XbScanlines     scanlines;
     XbJazzControls  controls;
-    unsigned char   reserved[20];
+    char            playerName[16];    /* multiplayer display name  */
+    char            serverAddr[64];    /* relay host[:port]         */
 } XbJazzConfig;
 
-#define XBJAZZ_CFG_MAGIC 0x584A4347u  /* v2 -- bumped when struct changed */
+#define XBJAZZ_CFG_MAGIC 0x584A4348u  /* v3 -- added playerName/serverAddr */
 
 extern XbJazzConfig g_xbConfig;
 

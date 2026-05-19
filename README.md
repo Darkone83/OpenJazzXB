@@ -19,6 +19,7 @@ OpenJazzXB is a port of [OpenJazz](https://github.com/AlisterT/openjazz) — the
 - Scanline overlay: off, light, medium, heavy
 - Save and load game (4 slots)
 - In-game pause menu (Start button)
+- Network play support for hosting and joining multiplayer sessions
 - Demo playback
 - Plasma menu backgrounds
 - Persistent configuration saved to `D:\xbjazz.cfg`
@@ -76,8 +77,25 @@ Access via **Start** during gameplay, or from the main menu under **Setup**.
 - **Video** — resolution, aspect mode, filter, scanlines
 - **Audio** — music and sound effect volume
 - **Gameplay** — slow motion, extra items, bird limit, HUD style
+- **Network** — set your player name, browse available rooms, host a room, or join a multiplayer game
 
 > Resolution changes require a restart to take effect. All other settings apply immediately.
+
+---
+
+## Network Play
+
+OpenJazzXB includes experimental network play support for multiplayer sessions.
+
+From **Setup → Network**, you can:
+
+- Set your player name
+- Host a multiplayer room
+- Browse available rooms
+- Join another player's room
+- Start a shared game once players are ready
+
+Network play is intended for playtesting and may still have edge cases. If a host leaves or the session drops, clients should return safely to the network menu instead of locking up.
 
 ---
 

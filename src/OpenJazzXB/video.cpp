@@ -36,6 +36,9 @@ static D3DTexture* s_pFrameTex = nullptr;  /* 320x200 normal */
 static D3DTexture* s_pScale2xTex = nullptr;  /* 640x400 scale2x */
 static unsigned char s_scale2xBuf[640 * 400];
 
+/* Xbox safety: avoid allocating a 256-entry palette copy on the stack every frame. */
+static SDL_Color s_framePal[256];
+
 static const int VGA_W = SW;   /* 320 */
 static const int VGA_H = SH;   /* 200 */
 static const int XB_W = 640;
@@ -253,17 +256,29 @@ static int       s_savedLength = 0;
 
 void Video::setPalette(SDL_Color* palette) {
     if (!palette) return;
+
+    /* Xbox renderer expands canvas pixels through currentPalette in flip().
+     * Do not push palette changes back into SDL surfaces every time; the
+     * software blitter copies indices directly, so SDL palette remapping is
+     * unnecessary and can corrupt state after repeated demo/level palette swaps. */
     memcpy(currentPalette, palette, 256 * sizeof(SDL_Color));
-    if (canvas) SDL_SetColors(canvas, currentPalette, 0, 256);
+
     s_savedStart = -1;  /* invalidate any stale mapPalette save */
+    s_savedLength = 0;
 }
 
 void Video::changePalette(SDL_Color* palette,
     unsigned char first, unsigned int amount) {
     if (!palette) return;
-    memcpy(&currentPalette[first], palette, amount * sizeof(SDL_Color));
-    if (canvas) SDL_SetColors(canvas, &currentPalette[first],
-        (int)first, (int)amount);
+    if (amount == 0) return;
+
+    unsigned int start = (unsigned int)first;
+    if (start >= 256) return;
+    if (amount > (256 - start)) amount = 256 - start;
+
+    /* Keep only the canonical Xbox palette copy current.  flip() uses this
+     * palette directly, so SDL_SetColors() is not needed here. */
+    memcpy(&currentPalette[start], palette, amount * sizeof(SDL_Color));
 }
 
 /* -----------------------------------------------------------------------
@@ -272,15 +287,23 @@ void Video::changePalette(SDL_Color* palette,
 void Video::flip(int mspf, PaletteEffect* paletteEffects, bool effectsStopped) {
     if (!s_pFrameTex || !canvas) return;
 
-    /* Apply palette effects to a local copy */
-    SDL_Color framePal[256];
-    memcpy(framePal, currentPalette, 256 * sizeof(SDL_Color));
+    /* Apply palette effects to a static frame palette copy.
+     *
+     * Test patch: this removes the per-frame 1KB stack allocation from the
+     * hottest render path and clamps bad frame deltas before palette-effect
+     * math runs. It does not change the live currentPalette.
+     */
+    memcpy(s_framePal, currentPalette, 256 * sizeof(SDL_Color));
+
+    if (mspf < 0) mspf = 0;
+    if (mspf > 250) mspf = 250;
+
     if (paletteEffects)
-        /* Xbox: pass direct=false -- effects modify framePal only.
+        /* Xbox: pass direct=false -- effects modify s_framePal only.
          * On PC SDL, direct=true updates the hardware 8bpp canvas palette.
          * Here we do our own palette expansion; direct=true would corrupt
          * currentPalette (feedback loop) making WhiteInEffect permanent. */
-        paletteEffects->apply(framePal, false, mspf, effectsStopped);
+        paletteEffects->apply(s_framePal, false, mspf, effectsStopped);
 
     /* Lock -- bail if it fails */
     bool useScale2x = (g_xbConfig.filterMode == XB_FILTER_SCALE2X && s_pScale2xTex);
@@ -299,7 +322,7 @@ void Video::flip(int mspf, PaletteEffect* paletteEffects, bool effectsStopped) {
             const unsigned char* srow = s_scale2xBuf + y * sw2;
             DWORD* drow = dst + y * dpitch;
             for (int x = 0; x < sw2; x++) {
-                SDL_Color c = framePal[srow[x]];
+                SDL_Color c = s_framePal[srow[x]];
                 drow[x] = ((DWORD)c.r << 16) | ((DWORD)c.g << 8) | (DWORD)c.b;
             }
         }
@@ -310,7 +333,7 @@ void Video::flip(int mspf, PaletteEffect* paletteEffects, bool effectsStopped) {
             const unsigned char* srow = src + y * canvas->pitch;
             DWORD* drow = dst + y * dpitch;
             for (int x = 0; x < VGA_W; x++) {
-                SDL_Color c = framePal[srow[x]];
+                SDL_Color c = s_framePal[srow[x]];
                 drow[x] = ((DWORD)c.r << 16) | ((DWORD)c.g << 8) | (DWORD)c.b;
             }
         }
@@ -366,12 +389,20 @@ SDL_Surface* Video::createSurface(const unsigned char* pixels,
 void Video::destroySurface(SDL_Surface* s) { SDL_FreeSurface(s); }
 
 void Video::restoreSurfacePalette(SDL_Surface* s) {
-    if (s) SDL_SetColors(s, currentPalette, 0, 256);
+    /* Xbox renderer ignores SDL surface palettes during blitSurface(); it copies
+     * raw 8-bit indices and resolves color only in flip() through currentPalette.
+     * Leave this as a no-op to avoid repeated SDL palette mutation. */
+    (void)s;
 }
 
 void Video::setSurfacePalette(SDL_Surface* s, SDL_Color* pal,
     int start, int length) {
-    if (s && pal) SDL_SetColors(s, pal, start, length);
+    /* No-op for Xbox index-copy renderer. Sprite/font palette changes are visual
+     * only on PC SDL palette blits; here colors come from currentPalette in flip(). */
+    (void)s;
+    (void)pal;
+    (void)start;
+    (void)length;
 }
 
 void Video::enableColorKey(SDL_Surface* s, unsigned int idx) {

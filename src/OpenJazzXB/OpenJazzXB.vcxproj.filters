@@ -231,6 +231,18 @@
     <ClCompile Include="xb_config.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="xb_net.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="xt_textentry.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="xb_net_glue.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="xb_netlog.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Media\Copy Assets Here.txt">
@@ -416,6 +428,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="xb_config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="xb_net.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="xb_textentry.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="xb_net_glue.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="xb_netlog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

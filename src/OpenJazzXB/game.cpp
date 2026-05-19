@@ -235,6 +235,18 @@ int Game::playLevel(char* fileName, bool intro, bool checkpoint) {
 
 		baseLevel = level = new JJ1Level(this, fileName, checkpoint, multiplayer);
 
+		/* Xbox multiplayer: players registered during the network handshake
+		 * before this level was created have no LevelPlayer yet. Create their
+		 * LevelPlayers only when this is a real multiplayer JJ1 level and the
+		 * player array/state is valid. Keep this out of demo/attract paths. */
+		if (multiplayer && players && (nPlayers > 0) && level) {
+			int xbpi;
+			for (xbpi = 0; xbpi < nPlayers; xbpi++) {
+				if (!players[xbpi].getLevelPlayer())
+					addLevelPlayer(players + xbpi);
+			}
+		}
+
 		if (intro) {
 
 			JJ1Planet* planet;
@@ -360,6 +372,10 @@ int Game::play() {
 
 				// Lost the level
 
+				/* Safety: localPlayer should be valid during normal play,
+				 * but avoid dereferencing a stale/null player if a network or
+				 * lifecycle path cleared it. */
+				if (!localPlayer) return E_NONE;
 				if (!localPlayer->getLives()) return E_NONE;
 
 				// Use checkpoint coordinates
@@ -413,6 +429,11 @@ void Game::addLevelPlayer(Player* player) {
 
 	int count;
 
+	if (!player) {
+		LOG_WARN("Cannot create level player: null player");
+		return;
+	}
+
 	if (level) {
 
 		Anim* pAnims[JJ1PANIMS];
@@ -443,8 +464,12 @@ void Game::addLevelPlayer(Player* player) {
 	}
 	else {
 
-		LOG_WARN("Cannot create level player!");
-		assert(false);
+		/* Do not assert on Xbox here. Network/client handshake and
+		 * attract/demo transitions can legitimately pass through moments
+		 * where no concrete level object is active yet. Just skip creation;
+		 * callers can retry after JJ1Level/JJ2Level exists. */
+		LOG_WARN("Cannot create level player: no active concrete level");
+		return;
 
 	}
 

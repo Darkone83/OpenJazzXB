@@ -268,13 +268,26 @@ void Level::drawOverlay(unsigned char bg, bool menu, int option,
 
 			const int itemY = (canvasH >> 1) + (count << 4) - 48;
 
-			/* Selection highlight: filled rect behind selected item.
-			 * Palette-independent -- uses textPalIndex directly as a fill.
-			 * Avoids mapPalette which relies on SDL1 8-bit palette-mapped blits. */
-			if (count == option)
-				video.drawRect((canvasW >> 1) - 68, itemY, 132, 15, selectedTextPalIndex, false);
+			/*
+			 * Xbox/8-bit palette note:
+			 * fontmn2 uses high font indices, which are not guaranteed to be
+			 * visible in the active level palette. Remap the font range onto
+			 * level-local colours for each row, then restore it immediately.
+			 *
+			 * The selected row uses an outline instead of a filled colour block.
+			 * A filled selectedTextPalIndex rect can become a solid red bar on
+			 * JJ1 palettes and hide the text.
+			 */
+			if (count == option) {
+				video.drawRect((canvasW >> 1) - 68, itemY, 132, 15, selectedTextPalIndex, true);
+				fontmn2->mapPalette(240, 8, selectedTextPalIndex, textPalSpan);
+			}
+			else {
+				fontmn2->mapPalette(240, 8, textPalIndex, textPalSpan);
+			}
 
 			fontmn2->showString(menuOptions[count], (canvasW >> 1) - 64, itemY + 2);
+			fontmn2->restorePalette();
 
 		}
 
