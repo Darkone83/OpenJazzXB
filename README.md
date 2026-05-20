@@ -146,7 +146,7 @@ LAN Game discovery does not require manual host entry when both consoles are on 
 1. Build the XBE using the RXDK toolchain (see **Building** below), or obtain a pre-built release.
 2. Copy `default.xbe` and your game data files to a folder on your Xbox hard drive (e.g. `E:\Games\OpenJazzXB\`).
 3. Launch via your dashboard of choice.
-4. On first boot, `openjazzxb.cfg` is created automatically with safe defaults (480i output).
+4. On first boot, `xbjazz.cfg` is created automatically with safe defaults (480i output).
 
 ---
 
