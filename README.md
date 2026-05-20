@@ -152,7 +152,7 @@ LAN Game discovery does not require manual host entry when both consoles are on 
 
 ## Building
 
-OpenJazzXB is built with the RXDK (Retail XDK) homebrew toolchain for original Xbox.
+OpenJazzXB is built with the RXDK homebrew toolchain for original Xbox.
 
 **Requirements:**
 - RXDK / Xbox SDK headers and libraries
