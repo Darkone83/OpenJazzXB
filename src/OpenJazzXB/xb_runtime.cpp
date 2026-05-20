@@ -90,8 +90,7 @@ extern "C" void __stdcall __ehvec_dtor(
 #pragma comment(linker, "/alternatename:??_M@YGXPAXIIP6EX0@Z@Z=__ehvec_dtor@16")
 
 /* -----------------------------------------------------------------------
-   __CxxFrameHandler3 -- PHASE 1 STUB
-   Replace with real RXDK C++ runtime lib before Phase 2.
+   __CxxFrameHandler3 -- STUB
    With this stub throw/catch does not work at runtime.
    ----------------------------------------------------------------------- */
 extern "C" int __cdecl __CxxFrameHandler3(void*, void*, void*, void*) {
