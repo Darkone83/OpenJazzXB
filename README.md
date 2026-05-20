@@ -33,7 +33,7 @@ OpenJazzXB is a port of [OpenJazz](https://github.com/AlisterT/openjazz) — the
 - Network play support for online/server-based sessions and local LAN games
 - Demo playback
 - Plasma menu backgrounds
-- Persistent configuration saved to `D:\xbjazz.cfg`
+- Persistent configuration saved to `xbjazz.cfg`
 
 ---
 
@@ -45,7 +45,7 @@ OpenJazzXB is a port of [OpenJazz](https://github.com/AlisterT/openjazz) — the
 
 ### Game Data
 
-Place the following files in the root of your Xbox's `D:\` drive alongside the OpenJazzXB XBE:
+Place the following files alongside the OpenJazzXB XBE:
 
 - `JAZZ.EXE` (or equivalent data files from your version)
 - All `.000`–`.009` episode files
@@ -146,7 +146,7 @@ LAN Game discovery does not require manual host entry when both consoles are on 
 1. Build the XBE using the RXDK toolchain (see **Building** below), or obtain a pre-built release.
 2. Copy `default.xbe` and your game data files to a folder on your Xbox hard drive (e.g. `E:\Games\OpenJazzXB\`).
 3. Launch via your dashboard of choice.
-4. On first boot, `D:\openjazzxb.cfg` is created automatically with safe defaults (480i output).
+4. On first boot, `openjazzxb.cfg` is created automatically with safe defaults (480i output).
 
 ---
 
