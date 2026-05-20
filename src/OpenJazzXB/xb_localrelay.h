@@ -30,60 +30,60 @@ extern "C" {
 #define XBLOCALRELAY_START_RECEIVED    5
 #define XBLOCALRELAY_ERROR            -1
 
-    int  XbLocalRelay_Init(void);
-    void XbLocalRelay_Shutdown(void);
+int  XbLocalRelay_Init(void);
+void XbLocalRelay_Shutdown(void);
 
-    /* Host side */
-    int  XbLocalRelay_HostStart(unsigned short controlPort);
-    void XbLocalRelay_HostStop(void);
-    void XbLocalRelay_HostPoll(void);
-    int  XbLocalRelay_HostState(void);
-    int  XbLocalRelay_HostHasClient(void);
-    void XbLocalRelay_HostGetClientName(char* outName, int outSize);
-    int  XbLocalRelay_HostSendStart(const char* levelFile, unsigned char difficulty);
+/* Host side */
+int  XbLocalRelay_HostStart(unsigned short controlPort);
+void XbLocalRelay_HostStop(void);
+void XbLocalRelay_HostPoll(void);
+int  XbLocalRelay_HostState(void);
+int  XbLocalRelay_HostHasClient(void);
+void XbLocalRelay_HostGetClientName(char* outName, int outSize);
+int  XbLocalRelay_HostSendStart(const char* levelFile, unsigned char difficulty);
 
-    /* Client side */
-    int  XbLocalRelay_ClientConnect(const char* hostIp,
-        unsigned short controlPort,
-        const char* playerName);
-    void XbLocalRelay_ClientStop(void);
-    void XbLocalRelay_ClientPoll(void);
-    int  XbLocalRelay_ClientState(void);
-    int  XbLocalRelay_ClientHasStart(void);
-    void XbLocalRelay_ClientGetLevel(char* outLevel, int outSize);
-    unsigned char XbLocalRelay_ClientGetDifficulty(void);
+/* Client side */
+int  XbLocalRelay_ClientConnect(const char* hostIp,
+                                unsigned short controlPort,
+                                const char* playerName);
+void XbLocalRelay_ClientStop(void);
+void XbLocalRelay_ClientPoll(void);
+int  XbLocalRelay_ClientState(void);
+int  XbLocalRelay_ClientHasStart(void);
+void XbLocalRelay_ClientGetLevel(char* outLevel, int outSize);
+unsigned char XbLocalRelay_ClientGetDifficulty(void);
 
-    /* LAN client launch-level handoff.
-     * This is separate from the control socket state so setupmenu.cpp can stop
-     * the LAN control layer before launching ClientGame, while ClientGame can
-     * still read the selected level without touching xb_net / xb_net_glue.
-     */
-    void XbLocalRelay_SetLaunchLevel(const char* levelFile, unsigned char difficulty);
-    int  XbLocalRelay_HasLaunchLevel(void);
-    void XbLocalRelay_GetLaunchLevel(char* outLevel, int outSize);
-    unsigned char XbLocalRelay_GetLaunchDifficulty(void);
-    void XbLocalRelay_ClearLaunchLevel(void);
+/* LAN client launch-level handoff.
+ * This is separate from the control socket state so setupmenu.cpp can stop
+ * the LAN control layer before launching ClientGame, while ClientGame can
+ * still read the selected level without touching xb_net / xb_net_glue.
+ */
+void XbLocalRelay_SetLaunchLevel(const char* levelFile, unsigned char difficulty);
+int  XbLocalRelay_HasLaunchLevel(void);
+void XbLocalRelay_GetLaunchLevel(char* outLevel, int outSize);
+unsigned char XbLocalRelay_GetLaunchDifficulty(void);
+void XbLocalRelay_ClearLaunchLevel(void);
 
-    /* LAN game bridge mode. */
+/* LAN game bridge mode. */
 #define XBLOCALRELAY_GAME_NONE   0
 #define XBLOCALRELAY_GAME_HOST   1
 #define XBLOCALRELAY_GAME_CLIENT 2
 
-    void XbLocalRelay_HostSetName(const char* hostName);
-    int  XbLocalRelay_HostBeginGame(void);
-    int  XbLocalRelay_ClientBeginGame(void);
-    void XbLocalRelay_GameEnd(void);
+void XbLocalRelay_HostSetName(const char* hostName);
+int  XbLocalRelay_HostBeginGame(void);
+int  XbLocalRelay_ClientBeginGame(void);
+void XbLocalRelay_GameEnd(void);
 
-    int  XbLocalRelay_GameRole(void);
-    int  XbLocalRelay_GameAcceptPending(void);
+int  XbLocalRelay_GameRole(void);
+int  XbLocalRelay_GameAcceptPending(void);
 
-    int  XbLocalRelay_GameHostSend(const unsigned char* buffer, int len);
-    int  XbLocalRelay_GameHostRecv(unsigned char* buffer, int len);
-    int  XbLocalRelay_GameClientSend(const unsigned char* buffer, int len);
-    int  XbLocalRelay_GameClientRecv(unsigned char* buffer, int len);
-    int  XbLocalRelay_GameIsConnected(void);
+int  XbLocalRelay_GameHostSend(const unsigned char* buffer, int len);
+int  XbLocalRelay_GameHostRecv(unsigned char* buffer, int len);
+int  XbLocalRelay_GameClientSend(const unsigned char* buffer, int len);
+int  XbLocalRelay_GameClientRecv(unsigned char* buffer, int len);
+int  XbLocalRelay_GameIsConnected(void);
 
-    void XbLocalRelay_GetLastError(char* outError, int outSize);
+void XbLocalRelay_GetLastError(char* outError, int outSize);
 
 #ifdef __cplusplus
 }

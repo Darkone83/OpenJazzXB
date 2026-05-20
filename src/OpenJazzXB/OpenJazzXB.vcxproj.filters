@@ -243,13 +243,10 @@
     <ClCompile Include="xb_localnet.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="xb_localrelay.h">
-      <Filter>Header Files</Filter>
-    </ClCompile>
     <ClCompile Include="xb_localrelay.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="xb_textentry.cpp">
+<ClCompile Include="xb_textentry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -452,6 +449,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="xb_localnet.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="xb_localrelay.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

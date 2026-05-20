@@ -27,7 +27,7 @@
 
 #define XBLR_CONNECT_TIMEOUT 5000u
 
- /* OpenJazz game packet constants used by the local bridge. */
+/* OpenJazz game packet constants used by the local bridge. */
 #define MT_G_PROPS   0x00
 #define MT_G_PJOIN   0x01
 #define MT_G_LEVEL   0x03
@@ -89,7 +89,7 @@ static char   s_hostName[XBLOCALRELAY_NAME_LEN];
 static int IsHostSuppressedPacket(const unsigned char* buffer, int len);
 static int SendPacketToClientSocket(const unsigned char* data, int len);
 static int BuildPjoin(unsigned char* out, int outMax,
-    const char* name, unsigned char slot);
+                      const char* name, unsigned char slot);
 static int HostSendClientHandshake(unsigned char difficulty);
 
 static void SafeCopy(char* dst, int dstLen, const char* src) {
@@ -301,7 +301,7 @@ int XbLocalRelay_HostState(void) {
 
 int XbLocalRelay_HostHasClient(void) {
     return (s_hostState == XBLOCALRELAY_CLIENT_CONNECTED &&
-        s_hostClientSock != INVALID_SOCKET) ? 1 : 0;
+            s_hostClientSock != INVALID_SOCKET) ? 1 : 0;
 }
 
 void XbLocalRelay_HostGetClientName(char* outName, int outSize) {
@@ -343,8 +343,8 @@ int XbLocalRelay_HostSendStart(const char* levelFile, unsigned char difficulty) 
 /* ── Client side ───────────────────────────────────────────────────────── */
 
 int XbLocalRelay_ClientConnect(const char* hostIp,
-    unsigned short controlPort,
-    const char* playerName) {
+                               unsigned short controlPort,
+                               const char* playerName) {
     struct sockaddr_in sa;
     int r;
 
@@ -522,7 +522,7 @@ static int SendPacketToClientSocket(const unsigned char* data, int len) {
 }
 
 static int BuildPjoin(unsigned char* out, int outMax,
-    const char* name, unsigned char slot) {
+                      const char* name, unsigned char slot) {
     int ni = 0;
     int pos;
     int total;

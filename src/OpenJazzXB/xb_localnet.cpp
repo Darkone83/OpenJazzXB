@@ -209,9 +209,9 @@ void XbLocalNet_Shutdown(void) {
 }
 
 int XbLocalNet_StartAdvertise(const char* playerName,
-    unsigned short controlPort,
-    unsigned short gamePort,
-    unsigned char status) {
+                              unsigned short controlPort,
+                              unsigned short gamePort,
+                              unsigned char status) {
     int yes = 1;
 
     if (NetEnsure() < 0)
@@ -276,7 +276,7 @@ void XbLocalNet_PollAdvertise(void) {
     to.sin_addr.s_addr = INADDR_BROADCAST;
 
     sendto(s_adSock, (const char*)&p, sizeof(p), 0,
-        (struct sockaddr*)&to, sizeof(to));
+           (struct sockaddr*)&to, sizeof(to));
 
     s_lastAdvert = now;
 }
@@ -328,7 +328,7 @@ void XbLocalNet_PollScan(void) {
             break;
 
         r = recvfrom(s_scanSock, (char*)&p, sizeof(p), 0,
-            (struct sockaddr*)&from, &fromLen);
+                     (struct sockaddr*)&from, &fromLen);
 
         if (r == SOCKET_ERROR) {
             int e = WSAGetLastError();

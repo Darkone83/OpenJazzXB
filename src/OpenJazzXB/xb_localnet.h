@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 /**
  * xb_localnet.h -- OpenJazzXB LAN discovery layer.
  *
@@ -30,44 +29,44 @@ extern "C" {
 #define XBLOCALNET_STATUS_WAITING 0
 #define XBLOCALNET_STATUS_BUSY    1
 
-    typedef struct XbLocalNetHost {
-        char           name[XBLOCALNET_NAME_LEN];
-        char           ip[XBLOCALNET_IP_LEN];
-        unsigned short controlPort;
-        unsigned short gamePort;
-        unsigned int   version;
-        unsigned int   lastSeenTicks;
-        unsigned char  status;
-        unsigned char  compatible;
-    } XbLocalNetHost;
+typedef struct XbLocalNetHost {
+    char           name[XBLOCALNET_NAME_LEN];
+    char           ip[XBLOCALNET_IP_LEN];
+    unsigned short controlPort;
+    unsigned short gamePort;
+    unsigned int   version;
+    unsigned int   lastSeenTicks;
+    unsigned char  status;
+    unsigned char  compatible;
+} XbLocalNetHost;
 
-    /* Global init/shutdown.
-     * Safe to call more than once.
-     */
-    int  XbLocalNet_Init(void);
-    void XbLocalNet_Shutdown(void);
+/* Global init/shutdown.
+ * Safe to call more than once.
+ */
+int  XbLocalNet_Init(void);
+void XbLocalNet_Shutdown(void);
 
-    /* Host advertisement.
-     * Call StartAdvertise once, then PollAdvertise every menu frame.
-     */
-    int  XbLocalNet_StartAdvertise(const char* playerName,
-        unsigned short controlPort,
-        unsigned short gamePort,
-        unsigned char status);
-    void XbLocalNet_StopAdvertise(void);
-    void XbLocalNet_PollAdvertise(void);
-    void XbLocalNet_SetAdvertiseStatus(unsigned char status);
+/* Host advertisement.
+ * Call StartAdvertise once, then PollAdvertise every menu frame.
+ */
+int  XbLocalNet_StartAdvertise(const char* playerName,
+                               unsigned short controlPort,
+                               unsigned short gamePort,
+                               unsigned char status);
+void XbLocalNet_StopAdvertise(void);
+void XbLocalNet_PollAdvertise(void);
+void XbLocalNet_SetAdvertiseStatus(unsigned char status);
 
-    /* Client scan.
-     * Call StartScan once, then PollScan every menu frame.
-     */
-    int  XbLocalNet_StartScan(void);
-    void XbLocalNet_StopScan(void);
-    void XbLocalNet_PollScan(void);
-    void XbLocalNet_ClearHosts(void);
+/* Client scan.
+ * Call StartScan once, then PollScan every menu frame.
+ */
+int  XbLocalNet_StartScan(void);
+void XbLocalNet_StopScan(void);
+void XbLocalNet_PollScan(void);
+void XbLocalNet_ClearHosts(void);
 
-    int  XbLocalNet_GetHostCount(void);
-    const XbLocalNetHost* XbLocalNet_GetHost(int index);
+int  XbLocalNet_GetHostCount(void);
+const XbLocalNetHost* XbLocalNet_GetHost(int index);
 
 #ifdef __cplusplus
 }

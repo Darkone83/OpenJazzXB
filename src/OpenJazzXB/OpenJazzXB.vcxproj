@@ -78,17 +78,20 @@
     <ClCompile Include="xb_exit.cpp" />
     <ClCompile Include="xb_file_compat.cpp" />
     <ClCompile Include="xb_input.cpp" />
-    <ClCompile Include="xb_localnet.cpp" />
-    <ClCompile Include="xb_localrelay.h" />
-    <ClCompile Include="xb_net.cpp" />
+    <ClCompile Include="xb_localnet.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="xb_localrelay.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+    </ClCompile>
+<ClCompile Include="xb_net.cpp" />
     <ClCompile Include="xb_netlog.cpp" />
     <ClCompile Include="xb_net_glue.cpp" />
     <ClCompile Include="xb_platform.cpp" />
     <ClCompile Include="xb_runtime.cpp" />
     <ClCompile Include="xb_sdl_compat.cpp" />
     <ClCompile Include="xb_splash.cpp" />
-    <ClCompile Include="xb_localrelay.cpp" />
-    <ClCompile Include="xb_textentry.cpp" />
+<ClCompile Include="xb_textentry.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="Media\Copy Assets Here.txt" />
@@ -151,7 +154,12 @@
     <ClInclude Include="xb_config.h" />
     <ClInclude Include="xb_exit.h" />
     <ClInclude Include="xb_input.h" />
-    <ClInclude Include="xb_localnet.h" />
+    <ClInclude Include="xb_localnet.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="xb_localrelay.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="xb_net.h" />
     <ClInclude Include="xb_netlog.h" />
     <ClInclude Include="xb_net_glue.h" />
