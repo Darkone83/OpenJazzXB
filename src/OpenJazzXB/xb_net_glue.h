@@ -46,18 +46,6 @@ extern "C" {
     /* ── API ─────────────────────────────────────────────────────────────────── */
 
     /**
-     * Initialise Xbox network stack (XNetStartup + WSAStartup).
-     * Call once at startup before any other XbNetG_* function.
-     * Returns 0 on success, -1 on failure.
-     */
-    int  XbNetG_Init(void);
-
-    /**
-     * Shut down Xbox network stack. Call on exit.
-     */
-    void XbNetG_Shutdown(void);
-
-    /**
      * Kick off async connect. Non-blocking -- returns immediately.
      * Call XbNetG_ConnectPoll() every frame until done.
      */
