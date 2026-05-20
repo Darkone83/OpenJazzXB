@@ -19,7 +19,7 @@ OpenJazzXB is a port of [OpenJazz](https://github.com/AlisterT/openjazz) — the
 - Scanline overlay: off, light, medium, heavy
 - Save and load game (4 slots)
 - In-game pause menu (Start button)
-- Network play support for hosting and joining multiplayer sessions
+- Network play support for online/server-based sessions and local LAN games
 - Demo playback
 - Plasma menu backgrounds
 - Persistent configuration saved to `D:\xbjazz.cfg`
@@ -77,7 +77,7 @@ Access via **Start** during gameplay, or from the main menu under **Setup**.
 - **Video** — resolution, aspect mode, filter, scanlines
 - **Audio** — music and sound effect volume
 - **Gameplay** — slow motion, extra items, bird limit, HUD style
-- **Network** — set your player name, browse available rooms, host a room, or join a multiplayer game
+- **Network** — configure player name, join network games, or host/join local LAN games
 
 > Resolution changes require a restart to take effect. All other settings apply immediately.
 
@@ -85,17 +85,48 @@ Access via **Start** during gameplay, or from the main menu under **Setup**.
 
 ## Network Play
 
-OpenJazzXB includes experimental network play support for multiplayer sessions.
+OpenJazzXB includes experimental multiplayer support. Network play is available in two modes:
 
-From **Setup → Network**, you can:
+- **Join Net Game** — connect to a network game service, browse available rooms, create a room, or join another player's room.
+- **LAN Game** — host or join a direct local network game between Xbox consoles on the same LAN.
 
-- Set your player name
-- Host a multiplayer room
+Network play is still intended for playtesting and may have edge cases. If a host leaves or a session drops, the game should return safely to the network menu instead of locking up.
+
+### Join Net Game
+
+Use **Setup → Network → Join Net Game** for server-based multiplayer rooms.
+
+From this menu, you can:
+
 - Browse available rooms
+- Create a new room
 - Join another player's room
-- Start a shared game once players are ready
+- Select episode, level, and difficulty as the host
+- Start the game once both players are ready
 
-Network play is intended for playtesting and may still have edge cases. If a host leaves or the session drops, clients should return safely to the network menu instead of locking up.
+This mode is useful when players are not using direct LAN play or when a central game service is preferred.
+
+### LAN Game
+
+Use **Setup → Network → LAN Game** for local network play between Xbox consoles on the same network.
+
+From the LAN Game menu, you can:
+
+- **Host Game** — advertise a local game and wait for another Xbox to join
+- **Join Game** — scan the local network and join an available LAN host
+
+LAN Game does not require an external game service. Both Xbox consoles must be on the same local network and must have matching OpenJazzXB builds and the required Jazz Jackrabbit™ game data installed locally.
+
+Once connected, the host selects the episode, level, and difficulty, then starts the game.
+
+### Network Setup
+
+Use **Setup → Network → Network Setup** to configure:
+
+- Player name
+- Network connection settings used by Join Net Game
+
+LAN Game discovery does not require manual host entry when both consoles are on the same local network.
 
 ---
 
