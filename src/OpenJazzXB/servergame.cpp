@@ -131,6 +131,16 @@ void ServerGame::send(unsigned char* buffer) {
 
     for (count = 0; count < MAX_CLIENTS; count++) {
 
+        /* Xbox/LAN safety:
+         * Check active client connection every step. The original block only
+         * checked disconnects inside the new-accept path, which can miss a
+         * dropped LAN client and leave the host running forever.
+         */
+        if (clientStatus[count] != -1 &&
+            !(net->isConnected(clientSock[count]))) {
+            return;
+        }
+
         /* Send to client unless the packet is about that client's own player --
          * each client is solely responsible for its own player's state */
         if ((clientStatus[count] != -1) &&
@@ -147,6 +157,15 @@ int ServerGame::step(unsigned int ticks) {
     int count, pcount, length, chunk;
 
     for (count = 0; count < MAX_CLIENTS; count++) {
+
+        /* Xbox/LAN safety:
+         * Check active client connection every step.
+         */
+        if (clientStatus[count] != -1 &&
+            !(net->isConnected(clientSock[count]))) {
+            return E_N_DISCONNECT;
+        }
+
 
         /* ── Level send phase ─────────────────────────────────────────── */
 
@@ -187,6 +206,7 @@ int ServerGame::step(unsigned int ticks) {
         if ((clientStatus[count] == -2) && (received[count] == 0)) {
 
             length = net->recv(clientSock[count], recvBuffers[count], 1);
+            if (length < 0) return E_N_DISCONNECT;
             if (length > 0) received[count]++;
         }
 
@@ -196,6 +216,7 @@ int ServerGame::step(unsigned int ticks) {
                 recvBuffers[count] + received[count],
                 recvBuffers[count][0] - received[count]);
 
+            if (length < 0) return E_N_DISCONNECT;
             if (length > 0) received[count] += length;
 
             if (received[count] >= recvBuffers[count][0]) {

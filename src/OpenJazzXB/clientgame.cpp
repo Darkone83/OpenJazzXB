@@ -25,6 +25,7 @@
 #include "setup.h"
 #include "util.h"
 #include "xb_net_glue.h"
+#include "xb_localrelay.h"
 
 #include <string.h>
 
@@ -131,17 +132,24 @@ ClientGame::ClientGame(char* address) {
     players = new Player[maxPlayers];
 
 
-    /* ── Set client level filename from MAPSEL ────────────────────────── */
+    /* ── Set client level filename ────────────────────────────────────── */
 
     /*
-     * The lobby receives OJXB_MAPSEL before ClientGame is constructed.
-     * Pull the stored filename here so Game::play() has a real levelFile.
+     * Relay play receives OJXB_MAPSEL and stores the filename in xb_net_glue.
+     * LAN play receives the filename through xb_localrelay.
+     *
+     * Check the LAN-only launch-level state first so the existing Join Net
+     * Game path remains untouched.
      */
     {
         char xbLevelFile[16];
 
         xbLevelFile[0] = 0;
-        XbNetG_GetClientLevelFile(xbLevelFile, 16);
+
+        if (XbLocalRelay_HasLaunchLevel())
+            XbLocalRelay_GetLaunchLevel(xbLevelFile, 16);
+        else
+            XbNetG_GetClientLevelFile(xbLevelFile, 16);
 
         if (!xbLevelFile[0]) {
             net->close(sock);

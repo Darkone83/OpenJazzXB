@@ -11,8 +11,11 @@
 #include "xb_textentry.h"
 #include "xb_net_glue.h"
 #include "xb_netlog.h"
+#include "xb_localnet.h"
+#include "xb_localrelay.h"
 #include "game.h"
 #include "gamemode.h"
+#include "jj1episodeutils.h"
 #include "util.h"
 #include <string.h>
 #include "controls.h"
@@ -108,6 +111,560 @@ static void xbMakeShortText(char* dst, int dstLen, const char* src, int maxChars
         while (di < maxChars - 3) { dst[di] = src[di]; di++; }
         dst[di++] = '.'; dst[di++] = '.'; dst[di++] = '.';
         dst[di] = '\0';
+    }
+}
+
+
+/* -----------------------------------------------------------------------
+   LAN Game branch
+
+   This branch is intentionally separate from the existing Join Net Game
+   relay path. LAN discovery/control lives in xb_localnet / xb_localrelay.
+   Once the LAN start packet is exchanged, we hand off to the normal
+   ServerGame / ClientGame path.
+   ----------------------------------------------------------------------- */
+
+static void xbLanCopyPlayerNameToSetup() {
+    char* cn = setup.characterName;
+    if (cn) {
+        int ni;
+        for (ni = 0; ni < 15 && g_xbConfig.playerName[ni]; ni++)
+            cn[ni] = g_xbConfig.playerName[ni];
+        cn[ni] = '\0';
+    }
+}
+
+static void xbLanDrawHeader(Plasma& plasma, const char* title) {
+    plasma.draw();
+    fontmn2->showString(title, canvasW >> 1, 8, alignX::Center);
+}
+
+static void xbLanShowMessage(const char* title, const char* detail, int frames) {
+    Plasma plasma;
+    int i;
+
+    { int pi; for (pi = 0; pi < 16; pi++) menuPalette[pi] = plasmaMenuPalette[pi]; }
+    video.setPalette(menuPalette);
+
+    for (i = 0; i < frames; i++) {
+        if (loop(NORMAL_LOOP) == E_QUIT)
+            return;
+
+        SDL_Delay(T_MENU_FRAME);
+        xbLanDrawHeader(plasma, title);
+
+        if (detail && detail[0])
+            fontmn2->showString(detail, canvasW >> 1, 104, alignX::Center);
+
+        fontmn2->showString("b=back", canvasW - 3, XB_FOOTER_Y2, alignX::Right);
+    }
+}
+
+static int xbLanHandoffDelay(const char* title, const char* detail, int frames) {
+    Plasma plasma;
+    int i;
+
+    { int pi; for (pi = 0; pi < 16; pi++) menuPalette[pi] = plasmaMenuPalette[pi]; }
+    video.setPalette(menuPalette);
+
+    for (i = 0; i < frames; i++) {
+        if (loop(NORMAL_LOOP) == E_QUIT)
+            return E_QUIT;
+
+        SDL_Delay(T_MENU_FRAME);
+        xbLanDrawHeader(plasma, title);
+
+        if (detail && detail[0])
+            fontmn2->showString(detail, canvasW >> 1, 104, alignX::Center);
+    }
+
+    return E_NONE;
+}
+
+static void xbLanBuildLevelFile(char* lvlFile, int episode, int levelNum) {
+    /*
+     * Match original OpenJazz episode mapping.
+     *
+     * Do NOT use episode + 1 here. OpenJazz maps menu episode indexes through
+     * episodeToWorld(), for example:
+     *
+     *   episode 0 -> world 0  -> LEVELx.000
+     *   episode 1 -> world 3  -> LEVELx.003
+     *   episode 2 -> world 6  -> LEVELx.006
+     *
+     * The old multiplayer picker built LEVELx.001 for episode 0, which can
+     * load a file but does not match the intended OJ episode/start mapping.
+     */
+    int world = episodeToWorld(episode);
+
+    lvlFile[0] = 'L'; lvlFile[1] = 'E'; lvlFile[2] = 'V';
+    lvlFile[3] = 'E'; lvlFile[4] = 'L';
+    lvlFile[5] = (char)('0' + levelNum);
+    lvlFile[6] = '.';
+    lvlFile[7] = (char)('0' + (world / 100) % 10);
+    lvlFile[8] = (char)('0' + (world / 10) % 10);
+    lvlFile[9] = (char)('0' + world % 10);
+    lvlFile[10] = '\0';
+}
+
+static int xbLanHostGame() {
+    Plasma plasma;
+    int ret;
+    char cname[XBLOCALRELAY_NAME_LEN];
+    char err[64];
+
+    int episode = 0;
+    int levelNum = 0;
+    int diffChoice = 1;
+    int pickRow = 0;
+    const char* diffNames[4] = { "easy", "normal", "hard", "turbo" };
+
+    { int pi; for (pi = 0; pi < 16; pi++) menuPalette[pi] = plasmaMenuPalette[pi]; }
+    video.setPalette(menuPalette);
+
+    XbLocalNet_Init();
+    XbLocalRelay_Init();
+    XbLocalRelay_HostSetName(g_xbConfig.playerName);
+
+    ret = XbLocalRelay_HostStart(XBLOCALRELAY_DEFAULT_PORT);
+    if (ret < 0) {
+        XbLocalRelay_GetLastError(err, sizeof(err));
+        xbLanShowMessage("LAN HOST ERROR", err[0] ? err : "control start failed", 90);
+        return E_NONE;
+    }
+
+    ret = XbLocalNet_StartAdvertise(g_xbConfig.playerName,
+        XBLOCALRELAY_DEFAULT_PORT,
+        XBLOCALNET_DEFAULT_GAME,
+        XBLOCALNET_STATUS_WAITING);
+
+    if (ret < 0) {
+        XbLocalRelay_HostStop();
+        xbLanShowMessage("LAN HOST ERROR", "advertise failed", 90);
+        return E_NONE;
+    }
+
+    while (true) {
+        int state;
+        int i;
+        bool hasClient;
+
+        if (loop(NORMAL_LOOP) == E_QUIT) {
+            XbLocalNet_StopAdvertise();
+            XbLocalRelay_HostStop();
+            return E_QUIT;
+        }
+
+        if (controls.release(C_ESCAPE)) {
+            XbLocalNet_StopAdvertise();
+            XbLocalRelay_HostStop();
+            return E_NONE;
+        }
+
+        XbLocalNet_PollAdvertise();
+        XbLocalRelay_HostPoll();
+
+        hasClient = XbLocalRelay_HostHasClient() ? true : false;
+
+        if (hasClient) {
+            if (controls.release(C_UP))   pickRow = (pickRow + 2) % 3;
+            if (controls.release(C_DOWN)) pickRow = (pickRow + 1) % 3;
+            if (controls.release(C_LEFT)) {
+                if (pickRow == 0) episode = (episode + 9) % 10;
+                if (pickRow == 1) levelNum = (levelNum + 9) % 10;
+                if (pickRow == 2) diffChoice = (diffChoice + 3) % 4;
+            }
+            if (controls.release(C_RIGHT)) {
+                if (pickRow == 0) episode = (episode + 1) % 10;
+                if (pickRow == 1) levelNum = (levelNum + 1) % 10;
+                if (pickRow == 2) diffChoice = (diffChoice + 1) % 4;
+            }
+
+            if (controls.release(C_ENTER)) {
+                char lvlFile[12];
+
+                xbLanBuildLevelFile(lvlFile, episode, levelNum);
+
+                if (XbLocalRelay_HostSendStart(lvlFile, (unsigned char)diffChoice) < 0) {
+                    XbLocalRelay_GetLastError(err, sizeof(err));
+                    xbLanShowMessage("LAN HOST ERROR", err[0] ? err : "start send failed", 90);
+                    continue;
+                }
+
+                /* Give the client time to process START before we tear down
+                 * the LAN control socket and enter ServerGame.
+                 */
+                if (xbLanHandoffDelay("LAN STARTING", "preparing host", 30) == E_QUIT) {
+                    XbLocalNet_StopAdvertise();
+                    XbLocalRelay_HostStop();
+                    return E_QUIT;
+                }
+
+                XbLocalNet_SetAdvertiseStatus(XBLOCALNET_STATUS_BUSY);
+                XbLocalNet_StopAdvertise();
+
+                if (XbLocalRelay_HostBeginGame() < 0) {
+                    XbLocalRelay_GetLastError(err, sizeof(err));
+                    XbLocalRelay_HostStop();
+                    xbLanShowMessage("LAN HOST ERROR", err[0] ? err : "begin game failed", 90);
+                    return E_NONE;
+                }
+
+                xbLanCopyPlayerNameToSetup();
+
+                XbNetLog_Open(1);
+                XbNetLog_Enable(1);
+                XbNetLog_Write("LAN host launching ServerGame");
+
+                try {
+                    char* lvlCopy = createString(lvlFile);
+                    ServerGame* sg = new ServerGame(
+                        M_COOP, lvlCopy,
+                        (difficultyType)diffChoice);
+                    int gret = static_cast<Game*>(sg)->play();
+                    delete sg;
+                    delete[] lvlCopy;
+
+                    XbLocalRelay_HostStop();
+                    xbRestoreMenuPalette();
+                    playMusic("MENUSNG.PSM");
+
+                    if (gret == E_QUIT)
+                        return E_QUIT;
+
+                    if (gret == E_N_DISCONNECT) {
+                        xbLanShowMessage("CLIENT DISCONNECTED", "", 90);
+                        return E_NONE;
+                    }
+                }
+                catch (int) {
+                    XbLocalRelay_HostStop();
+                    xbRestoreMenuPalette();
+                    playMusic("MENUSNG.PSM");
+                }
+
+                return E_NONE;
+            }
+        }
+
+        SDL_Delay(T_MENU_FRAME);
+        xbLanDrawHeader(plasma, "LAN HOST GAME");
+
+        cname[0] = '\0';
+        XbLocalRelay_HostGetClientName(cname, sizeof(cname));
+
+        if (!hasClient) {
+            fontmn2->showString("waiting for player",
+                canvasW >> 1, 72, alignX::Center);
+            fontmn2->showString("scan from another xbox",
+                canvasW >> 1, 100, alignX::Center);
+        }
+        else {
+            fontmn2->showString("client connected",
+                canvasW >> 1, 28, alignX::Center);
+
+            if (cname[0])
+                fontmn2->showString(cname,
+                    canvasW >> 1, 48, alignX::Center);
+
+            const int pickY = 78;
+            const int pRowH = 21;
+            const char* pickLabels[3] = { "episode", "level", "difficulty" };
+            char epStr[4] = { (char)('0' + episode), '\0' };
+            char lvStr[4] = { (char)('0' + levelNum), '\0' };
+
+            for (i = 0; i < 3; i++) {
+                int ry = pickY + i * pRowH;
+                if (i == pickRow)
+                    video.drawRect(8, ry - 4, canvasW - 16, pRowH + 1, 79, false);
+                fontmn2->showString(pickLabels[i], 16, ry);
+
+                const char* val = (i == 0) ? epStr :
+                    (i == 1) ? lvStr : diffNames[diffChoice];
+
+                fontmn2->showString(val, canvasW - 16, ry, alignX::Right);
+            }
+
+            fontmn2->showString("a=start", 3, XB_FOOTER_Y1, alignX::Left);
+            fontmn2->showString("lt/rt=change", canvasW - 3, XB_FOOTER_Y1, alignX::Right);
+        }
+
+        state = XbLocalRelay_HostState();
+        if (state == XBLOCALRELAY_ERROR) {
+            XbLocalRelay_GetLastError(err, sizeof(err));
+            XbLocalNet_StopAdvertise();
+            XbLocalRelay_HostStop();
+            xbLanShowMessage("LAN HOST ERROR", err[0] ? err : "unknown error", 90);
+            return E_NONE;
+        }
+
+        fontmn2->showString("b=back", canvasW - 3, XB_FOOTER_Y2, alignX::Right);
+    }
+}
+
+static int xbLanJoinGame() {
+    Plasma plasma;
+    int option = 0;
+    int scanFrames = 0;
+    char err[64];
+    char selectedIp[XBLOCALNET_IP_LEN];
+
+    selectedIp[0] = '\0';
+
+    { int pi; for (pi = 0; pi < 16; pi++) menuPalette[pi] = plasmaMenuPalette[pi]; }
+    video.setPalette(menuPalette);
+
+    XbLocalNet_Init();
+    XbLocalRelay_Init();
+
+    if (XbLocalNet_StartScan() < 0) {
+        xbLanShowMessage("LAN JOIN ERROR", "scan failed", 90);
+        return E_NONE;
+    }
+
+    while (true) {
+        int count;
+        int i;
+
+        if (loop(NORMAL_LOOP) == E_QUIT) {
+            XbLocalNet_StopScan();
+            XbLocalRelay_ClientStop();
+            return E_QUIT;
+        }
+
+        if (controls.release(C_ESCAPE)) {
+            XbLocalNet_StopScan();
+            XbLocalRelay_ClientStop();
+            return E_NONE;
+        }
+
+        XbLocalNet_PollScan();
+        XbLocalRelay_ClientPoll();
+
+        count = XbLocalNet_GetHostCount();
+        if (option >= count) option = count - 1;
+        if (option < 0) option = 0;
+
+        if (controls.release(C_UP) && count > 0) {
+            option--;
+            if (option < 0) option = count - 1;
+        }
+
+        if (controls.release(C_DOWN) && count > 0) {
+            option++;
+            if (option >= count) option = 0;
+        }
+
+        if (controls.release(C_ENTER) && count > 0 &&
+            XbLocalRelay_ClientState() != XBLOCALRELAY_CONNECTING &&
+            XbLocalRelay_ClientState() != XBLOCALRELAY_WAITING_START) {
+            const XbLocalNetHost* h = XbLocalNet_GetHost(option);
+
+            if (h && h->compatible && h->status == XBLOCALNET_STATUS_WAITING) {
+                int ci;
+
+                XbLocalRelay_ClientStop();
+
+                selectedIp[0] = '\0';
+                for (ci = 0; ci < XBLOCALNET_IP_LEN - 1 && h->ip[ci]; ci++)
+                    selectedIp[ci] = h->ip[ci];
+                selectedIp[ci] = '\0';
+
+                if (XbLocalRelay_ClientConnect(h->ip, h->controlPort, g_xbConfig.playerName) < 0) {
+                    XbLocalRelay_GetLastError(err, sizeof(err));
+                    xbLanShowMessage("LAN JOIN ERROR", err[0] ? err : "connect failed", 90);
+                }
+            }
+        }
+
+        if (XbLocalRelay_ClientState() == XBLOCALRELAY_START_RECEIVED) {
+            char lvl[XBLOCALRELAY_LEVEL_LEN];
+            unsigned char diff;
+
+            XbLocalRelay_ClientGetLevel(lvl, sizeof(lvl));
+            diff = XbLocalRelay_ClientGetDifficulty();
+
+            XbLocalNet_StopScan();
+
+            if (XbLocalRelay_ClientBeginGame() < 0) {
+                XbLocalRelay_GetLastError(err, sizeof(err));
+                XbLocalRelay_ClientStop();
+                xbLanShowMessage("LAN JOIN ERROR", err[0] ? err : "begin game failed", 90);
+                return E_NONE;
+            }
+
+            /* Seed LAN-only launch-level state.
+             * Do not touch xb_net / xb_net_glue; Join Net Game stays isolated.
+             */
+            XbLocalRelay_SetLaunchLevel(lvl, diff);
+
+            xbLanCopyPlayerNameToSetup();
+
+            /* LAN-only handoff guard.
+             * The host needs a moment to leave the control/lobby state and
+             * enter ServerGame/listen before ClientGame attempts to connect.
+             */
+            if (xbLanHandoffDelay("LAN STARTING", "waiting for host", 90) == E_QUIT) {
+                XbLocalRelay_ClearLaunchLevel();
+                return E_QUIT;
+            }
+
+            XbNetLog_Open(0);
+            XbNetLog_Enable(1);
+            XbNetLog_Write("LAN client launching ClientGame");
+
+            int gameRet = E_NONE;
+
+            try {
+                ClientGame* g = new ClientGame(selectedIp);
+                gameRet = g->play();
+                delete g;
+            }
+            catch (int e) {
+                gameRet = e;
+            }
+
+            XbLocalRelay_ClientStop();
+            XbLocalRelay_ClearLaunchLevel();
+
+            xbRestoreMenuPalette();
+            playMusic("MENUSNG.PSM");
+
+            if (gameRet == E_QUIT)
+                return E_QUIT;
+
+            if (gameRet == E_N_DISCONNECT) {
+                int dt;
+                for (dt = 0; dt < 90; dt++) {
+                    if (loop(NORMAL_LOOP) == E_QUIT)
+                        return E_QUIT;
+
+                    SDL_Delay(T_MENU_FRAME);
+                    xbLanDrawHeader(plasma, "HOST DISCONNECTED");
+                }
+
+                return E_NONE;
+            }
+
+            return E_NONE;
+        }
+
+        if (XbLocalRelay_ClientState() == XBLOCALRELAY_ERROR) {
+            XbLocalRelay_GetLastError(err, sizeof(err));
+            XbLocalRelay_ClientStop();
+            xbLanShowMessage("LAN JOIN ERROR", err[0] ? err : "unknown error", 90);
+        }
+
+        SDL_Delay(T_MENU_FRAME);
+        xbLanDrawHeader(plasma, "LAN JOIN GAME");
+
+        if (count == 0) {
+            fontmn2->showString("scanning for games",
+                canvasW >> 1, 86, alignX::Center);
+
+            if ((scanFrames / 30) & 1)
+                fontmn2->showString("...",
+                    canvasW >> 1, 108, alignX::Center);
+        }
+        else {
+            for (i = 0; i < count && i < 5; i++) {
+                const XbLocalNetHost* h = XbLocalNet_GetHost(i);
+                int y = 52 + (i * 24);
+
+                if (!h) continue;
+
+                if (i == option)
+                    video.drawRect(8, y - 4, canvasW - 16, 21, 79, false);
+
+                fontmn2->showString(h->name[0] ? h->name : "LAN HOST",
+                    14, y, alignX::Left);
+
+                if (!h->compatible)
+                    fontmn2->showString("bad ver",
+                        canvasW - 12, y, alignX::Right);
+                else if (h->status != XBLOCALNET_STATUS_WAITING)
+                    fontmn2->showString("busy",
+                        canvasW - 12, y, alignX::Right);
+                else
+                    fontmn2->showString(h->ip,
+                        canvasW - 12, y, alignX::Right);
+            }
+        }
+
+        if (XbLocalRelay_ClientState() == XBLOCALRELAY_CONNECTING ||
+            XbLocalRelay_ClientState() == XBLOCALRELAY_WAITING_START) {
+            fontmn2->showString("connected - waiting",
+                canvasW >> 1, 152, alignX::Center);
+        }
+
+        fontmn2->showString("a=connect", 3, XB_FOOTER_Y2, alignX::Left);
+        fontmn2->showString("b=back", canvasW - 3, XB_FOOTER_Y2, alignX::Right);
+
+        scanFrames++;
+    }
+}
+
+static int xbLanGameMenu() {
+    const char* opts[3] = {
+        "host game",
+        "join game",
+        "back"
+    };
+
+    int option = 0;
+    Plasma plasma;
+
+    { int pi; for (pi = 0; pi < 16; pi++) menuPalette[pi] = plasmaMenuPalette[pi]; }
+    video.setPalette(menuPalette);
+
+    while (true) {
+        int i;
+
+        if (loop(NORMAL_LOOP) == E_QUIT)
+            return E_QUIT;
+
+        if (controls.release(C_ESCAPE))
+            return E_NONE;
+
+        if (controls.release(C_UP)) {
+            option--;
+            if (option < 0) option = 2;
+        }
+
+        if (controls.release(C_DOWN)) {
+            option++;
+            if (option > 2) option = 0;
+        }
+
+        if (controls.release(C_ENTER)) {
+            if (option == 0) {
+                int r = xbLanHostGame();
+                if (r == E_QUIT) return E_QUIT;
+            }
+            else if (option == 1) {
+                int r = xbLanJoinGame();
+                if (r == E_QUIT) return E_QUIT;
+            }
+            else {
+                return E_NONE;
+            }
+        }
+
+        SDL_Delay(T_MENU_FRAME);
+        xbLanDrawHeader(plasma, "LAN GAME");
+
+        for (i = 0; i < 3; i++) {
+            int y = 72 + (i * 28);
+
+            if (i == option)
+                video.drawRect(48, y - 5, canvasW - 96, 22, 79, false);
+
+            fontmn2->showString(opts[i],
+                canvasW >> 1, y, alignX::Center);
+        }
+
+        fontmn2->showString("a=select", 3, XB_FOOTER_Y2, alignX::Left);
+        fontmn2->showString("b=back", canvasW - 3, XB_FOOTER_Y2, alignX::Right);
     }
 }
 
@@ -713,7 +1270,17 @@ static int xbNetLobby() {
 
             /* A = start game */
             if (controls.release(C_ENTER) && lobbyState.nPlayers == 2) {
-                int world = episode + 1;
+                /*
+                 * Match original OpenJazz episode mapping.
+                 *
+                 * Do NOT use episode + 1 here. OpenJazz maps menu episode
+                 * indexes through episodeToWorld(), for example:
+                 *
+                 *   episode 0 -> world 0  -> LEVELx.000
+                 *   episode 1 -> world 3  -> LEVELx.003
+                 *   episode 2 -> world 6  -> LEVELx.006
+                 */
+                int world = episodeToWorld(episode);
                 char lvlFile[12];
                 lvlFile[0] = 'L'; lvlFile[1] = 'E'; lvlFile[2] = 'V';
                 lvlFile[3] = 'E'; lvlFile[4] = 'L';
@@ -880,17 +1447,21 @@ int SetupMenu::setupMain() {
             break;
 
         case 4: {
-            const char* netOpts[2] = { "setup", "join game" };
+            const char* netOpts[3] = { "join net game", "lan game", "network setup" };
             int netSub = 0;
             while (true) {
-                ret = generic("NETWORK", netOpts, 2, netSub);
+                ret = generic("NETWORK", netOpts, 3, netSub);
                 if (ret == E_QUIT) return E_QUIT;
                 if (ret < 0) break;
+
                 if (netSub == 0) {
-                    if (xbSetupNetwork() == E_QUIT) return E_QUIT;
+                    if (xbNetLobby() == E_QUIT) return E_QUIT;
+                }
+                else if (netSub == 1) {
+                    if (xbLanGameMenu() == E_QUIT) return E_QUIT;
                 }
                 else {
-                    if (xbNetLobby() == E_QUIT) return E_QUIT;
+                    if (xbSetupNetwork() == E_QUIT) return E_QUIT;
                 }
             }
             break;
