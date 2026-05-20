@@ -40,7 +40,7 @@ static SOCKET       s_sock = INVALID_SOCKET;
 static int          s_connected = 0;
 static XNDNS* s_dns = NULL;
 static IN_ADDR        s_serverAddr;
-static int          s_relayPort = 20052;
+static int          s_relayPort = 10052;
 static DWORD         s_stateStart = 0;
 static int          s_netUp = 0;
 

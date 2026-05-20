@@ -1,17 +1,6 @@
 /**
  * xb_runtime.cpp
  * XbJazz -- C++ runtime stubs not provided by RXDK in current project config.
- *
- * -----------------------------------------------------------------------
- * PHASE 1 ONLY -- READ BEFORE PHASE 2
- * -----------------------------------------------------------------------
- * __CxxFrameHandler3 is stubbed here so the project links for Phase 1.
- * With this stub, C++ exception handling (throw/catch) does NOT work at
- * runtime.  Before Phase 2 hardware testing:
- *   1. Open XbDiag project -> Linker -> Input -> Additional Dependencies
- *   2. Find the .lib that provides __CxxFrameHandler3 (vccrt.lib etc.)
- *   3. Add it to OpenJazzXB's linker additional dependencies
- *   4. Remove the __CxxFrameHandler3 stub below
  * -----------------------------------------------------------------------
  */
 
