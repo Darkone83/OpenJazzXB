@@ -313,7 +313,7 @@ static int xbLanHostGame() {
                 xbLanCopyPlayerNameToSetup();
 
                 XbNetLog_Open(1);
-                XbNetLog_Enable(1);
+				XbNetLog_Enable(0); // set to 1 to enable packet logging
                 XbNetLog_Write("LAN host launching ServerGame");
 
                 try {
@@ -510,7 +510,7 @@ static int xbLanJoinGame() {
             }
 
             XbNetLog_Open(0);
-            XbNetLog_Enable(1);
+            XbNetLog_Enable(0); // set to 1 to enable packet logging
             XbNetLog_Write("LAN client launching ClientGame");
 
             int gameRet = E_NONE;
@@ -1211,7 +1211,7 @@ static int xbNetLobby() {
             }
 
             XbNetLog_Open(0);
-            XbNetLog_Enable(1);
+            XbNetLog_Enable(0); // set to 1 to enable packet logging
             XbNetLog_Write("Client launching ClientGame");
 
             int gameRet = E_NONE;
@@ -1294,7 +1294,7 @@ static int xbNetLobby() {
                 XbNetG_SendMapsel(lvlFile, (unsigned char)diffChoice);
                 XbNetG_SetExpectedClients(1);
                 XbNetLog_Open(1);
-                XbNetLog_Enable(1);
+                XbNetLog_Enable(0); // set to 1 to enable packet logging
                 XbNetLog_Write("Host launching ServerGame");
 
                 /* Copy player name into OJ setup */
